@@ -8,7 +8,7 @@ import {
   MORGUE_LINES,
   type Line,
 } from "./dialogue";
-import { clang, heartbeat, setMasterVolume, startDrone, stopDrone, unlockAudio } from "./audio";
+import { clang, heartbeat, setMasterVolume, startDrone, startMusic, stopDrone, stopMusic, unlockAudio } from "./audio";
 
 const DiveScene = lazy(() => import("./DiveScene"));
 
@@ -17,6 +17,7 @@ type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "morgue" | "credi
 export default function Game() {
   const [scene, setScene] = useState<Scene>("title");
   const [volume, setVolume] = useState(0.6);
+  const musicStarted = useRef(false);
 
   useEffect(() => setMasterVolume(volume), [volume]);
 
@@ -25,12 +26,19 @@ export default function Game() {
     else if (scene === "husk") startDrone(1);
     else if (scene === "airlock") startDrone(0.3);
     else stopDrone();
-    return () => {
-      // do not stop on every transition — only on unmount
-    };
+    // ambient music: starts after title, persists across scenes, stops on credits
+    if (scene !== "title" && scene !== "credits" && !musicStarted.current) {
+      startMusic();
+      musicStarted.current = true;
+    }
+    if (scene === "credits" && musicStarted.current) {
+      stopMusic();
+      musicStarted.current = false;
+    }
   }, [scene]);
 
-  useEffect(() => () => stopDrone(), []);
+  useEffect(() => () => { stopDrone(); stopMusic(); }, []);
+
 
   return (
     <div className="sy-root">

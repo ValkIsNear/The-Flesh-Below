@@ -24,22 +24,24 @@ export const AIRLOCK_LINES: Line[] = [
   { kind: "narration", text: "I sit on the rusted bench, the hydraulic in my right leg cold and sluggish. I kick my heel against the floor." },
   { kind: "sfx", text: "Klang. Tap. Klang." },
   { kind: "narration", text: "In my pocket, a broken cigarette I will never light. A useless piece of the surface I carry like a relic." },
-  { kind: "radio", speaker: "KAYLA", sr: "Asset 77-T, javi se. Pritisak na osamsto atmosfera.", text: "Asset 77-T, respond. Pressure at eight hundred atmospheres." },
-  { kind: "radio", speaker: "KAYLA", sr: "Otvaram propust. Proveri zaptivke, Tamara.", text: "Opening the floodgate. Check your seals, Tamara." },
+  { kind: "radio", speaker: "KAYLA", sr: "Javi se.", text: "Asset 77-T, respond. Pressure at eight hundred atmospheres." },
+  { kind: "radio", speaker: "KAYLA", sr: "Proveri zaptivke.", text: "Opening the floodgate. Check your seals, Tamara." },
   { kind: "narration", text: "Her voice is flat. Static-heavy. But it's the only warm thing down here, and we both know it." },
-  { kind: "radio", speaker: "KAYLA", sr: "…Vrati se kući.", text: "…Come back home." },
+  { kind: "radio", speaker: "KAYLA", sr: "Vrati se kući.", text: "…Come back home." },
   { kind: "narration", text: "I don't answer. The floodgate groans open. The Vital Fluid swallows the light." },
+
 ];
 
 export const HUSK_LINES: Line[] = [
   { kind: "sfx", text: "— Sector Gamma-7. Three thousand meters. The suit's beam catches something drifting. —" },
   { kind: "narration", text: "A suit. One leg torn away. Faceplate shattered, blinded by the pressure. The body listing in the current, slow and dreamlike, as if still asleep." },
   { kind: "narration", text: "I knew that suit." },
-  { kind: "radio", speaker: "SYSTEM", sr: "Upozorenje. Bio-masa reaguje na prisustvo.", text: "Warning. Bio-mass reacting to your presence." },
+  { kind: "radio", speaker: "SYSTEM", sr: "Upozorenje.", text: "Warning. Bio-mass reacting to your presence." },
   { kind: "narration", text: "The faceplate flickers. The bio-meat on the helmet's seams pulses — and, for an instant, it takes the shape of her face. The girl I left on the surface without saying goodbye." },
-  { kind: "radio", speaker: "ABYSS", sr: "…Tamara.", text: "…Tamara." },
-  { kind: "radio", speaker: "KAYLA", sr: "Tamara, odmakni se! To nije lice — to je samo meso i kalibracija!", text: "Tamara, back away! That isn't a face — it's just meat and calibration!" },
-  { kind: "radio", speaker: "KAYLA", sr: "Hrani se tvojom tugom. Čuješ li me? ČUJEŠ LI ME?", text: "It's feeding on your grief. Do you hear me? DO YOU HEAR ME?" },
+  { kind: "radio", speaker: "ABYSS", sr: "Tamara…", text: "…Tamara." },
+  { kind: "radio", speaker: "KAYLA", sr: "Odmakni se!", text: "Back away! That isn't a face — it's just meat and calibration!" },
+  { kind: "radio", speaker: "KAYLA", sr: "Čuješ li me?", text: "It's feeding on your grief. Do you hear me? DO YOU HEAR ME?" },
+
   { kind: "narration", text: "I drop the cassette. I back away. The wet, clicking sound behind me is trying to learn her name." },
 ];
 

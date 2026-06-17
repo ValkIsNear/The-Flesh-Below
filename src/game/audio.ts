@@ -1,9 +1,13 @@
-// Minimal procedural audio: deep drone + footstep clangs. No external assets.
+// Minimal procedural audio: deep drone, footstep clangs, and a slow Duster-like
+// ambient music bed (slow detuned chord pad in a minor key with a soft pulse).
 
 let ctx: AudioContext | null = null;
 let droneGain: GainNode | null = null;
 let droneNodes: { osc: OscillatorNode; noise: AudioBufferSourceNode; filter: BiquadFilterNode } | null = null;
+let musicGain: GainNode | null = null;
+let musicNodes: { oscs: OscillatorNode[]; lfo: OscillatorNode; lfoGain: GainNode; timer: number } | null = null;
 let masterVolume = 0.6;
+
 
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -23,7 +27,9 @@ export function unlockAudio() {
 export function setMasterVolume(v: number) {
   masterVolume = Math.max(0, Math.min(1, v));
   if (droneGain) droneGain.gain.value = 0.18 * masterVolume;
+  if (musicGain) musicGain.gain.value = 0.14 * masterVolume;
 }
+
 
 export function startDrone(intensity = 0.5) {
   const c = getCtx();
@@ -105,4 +111,113 @@ export function heartbeat() {
   o.connect(g).connect(c.destination);
   o.start(now);
   o.stop(now + 0.4);
+}
+
+// ---- Ambient music (Duster "Letting Go" vibe: slow, low, melancholic) ----
+// A drifting chord progression in F# minor: F#m – D – A – E (vi – IV – I – V).
+// Each chord sustains ~9s. Detuned sines + soft noise bed + slow LFO swell.
+
+const CHORDS: number[][] = [
+  // F#m: F#2 A2 C#3 F#3
+  [92.5, 110.0, 138.59, 185.0],
+  // D:   D2  A2  F#3 D3
+  [73.42, 110.0, 185.0, 146.83],
+  // A:   A2  C#3 E3  A3
+  [110.0, 138.59, 164.81, 220.0],
+  // E:   E2  B2  G#3 E3
+  [82.41, 123.47, 207.65, 164.81],
+];
+
+const CHORD_SECONDS = 9;
+
+export function startMusic() {
+  const c = getCtx();
+  if (!c) return;
+  stopMusic();
+
+  const master = c.createGain();
+  master.gain.value = 0.14 * masterVolume;
+  master.connect(c.destination);
+
+  // soft tape-hiss bed
+  const noiseBuf = c.createBuffer(1, c.sampleRate * 3, c.sampleRate);
+  const nd = noiseBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * 0.06;
+  const noise = c.createBufferSource();
+  noise.buffer = noiseBuf;
+  noise.loop = true;
+  const nf = c.createBiquadFilter();
+  nf.type = "lowpass";
+  nf.frequency.value = 1200;
+  const ng = c.createGain();
+  ng.gain.value = 0.5;
+  noise.connect(nf).connect(ng).connect(master);
+  noise.start();
+
+  // slow LFO swelling the bus
+  const lfo = c.createOscillator();
+  lfo.frequency.value = 0.06;
+  const lfoGain = c.createGain();
+  lfoGain.gain.value = 0.06 * masterVolume;
+  lfo.connect(lfoGain).connect(master.gain);
+  lfo.start();
+
+  // 4 voices, kept alive and re-tuned per chord change
+  const oscs: OscillatorNode[] = [];
+  const voiceGains: GainNode[] = [];
+  for (let i = 0; i < 4; i++) {
+    const o = c.createOscillator();
+    o.type = i === 0 ? "triangle" : "sine";
+    o.detune.value = (i - 1.5) * 6; // slight chorus
+    const g = c.createGain();
+    g.gain.value = 0;
+    const f = c.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = 900;
+    o.connect(f).connect(g).connect(master);
+    o.start();
+    oscs.push(o);
+    voiceGains.push(g);
+  }
+
+  let chordIdx = 0;
+  const setChord = (idx: number) => {
+    const chord = CHORDS[idx % CHORDS.length];
+    const now = c.currentTime;
+    chord.forEach((freq, i) => {
+      oscs[i].frequency.cancelScheduledValues(now);
+      oscs[i].frequency.linearRampToValueAtTime(freq, now + 2.0);
+      voiceGains[i].gain.cancelScheduledValues(now);
+      // fade in, hold, fade out within chord window
+      voiceGains[i].gain.linearRampToValueAtTime(0.22, now + 2.5);
+      voiceGains[i].gain.linearRampToValueAtTime(0.18, now + CHORD_SECONDS - 1);
+    });
+  };
+  setChord(chordIdx);
+  const timer = window.setInterval(() => {
+    chordIdx++;
+    setChord(chordIdx);
+  }, CHORD_SECONDS * 1000);
+
+  musicGain = master;
+  musicNodes = { oscs: [...oscs, noise as unknown as OscillatorNode], lfo, lfoGain, timer };
+}
+
+export function stopMusic() {
+  if (musicNodes && musicGain && ctx) {
+    window.clearInterval(musicNodes.timer);
+    const now = ctx.currentTime;
+    musicGain.gain.cancelScheduledValues(now);
+    musicGain.gain.linearRampToValueAtTime(0, now + 1.2);
+    const oscs = musicNodes.oscs;
+    const lfo = musicNodes.lfo;
+    const g = musicGain;
+    window.setTimeout(() => {
+      oscs.forEach((o) => { try { o.stop(); } catch { /* noop */ } });
+      try { lfo.stop(); } catch { /* noop */ }
+      try { g.disconnect(); } catch { /* noop */ }
+    }, 1400);
+    musicGain = null;
+    musicNodes = null;
+  }
 }
