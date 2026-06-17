@@ -36,11 +36,12 @@ export const HUSK_LINES: Line[] = [
   { kind: "sfx", text: "— Sector Gamma-7. Three thousand meters. The suit's beam catches something drifting. —" },
   { kind: "narration", text: "A suit. One leg torn away. Faceplate shattered, blinded by the pressure. The body listing in the current, slow and dreamlike, as if still asleep." },
   { kind: "narration", text: "I knew that suit." },
-  { kind: "radio", speaker: "SYSTEM", sr: "Upozorenje. Bio-masa reaguje na prisustvo.", text: "Warning. Bio-mass reacting to your presence." },
+  { kind: "radio", speaker: "SYSTEM", sr: "Upozorenje.", text: "Warning. Bio-mass reacting to your presence." },
   { kind: "narration", text: "The faceplate flickers. The bio-meat on the helmet's seams pulses — and, for an instant, it takes the shape of her face. The girl I left on the surface without saying goodbye." },
-  { kind: "radio", speaker: "ABYSS", sr: "…Tamara.", text: "…Tamara." },
-  { kind: "radio", speaker: "KAYLA", sr: "Tamara, odmakni se! To nije lice — to je samo meso i kalibracija!", text: "Tamara, back away! That isn't a face — it's just meat and calibration!" },
-  { kind: "radio", speaker: "KAYLA", sr: "Hrani se tvojom tugom. Čuješ li me? ČUJEŠ LI ME?", text: "It's feeding on your grief. Do you hear me? DO YOU HEAR ME?" },
+  { kind: "radio", speaker: "ABYSS", sr: "Tamara…", text: "…Tamara." },
+  { kind: "radio", speaker: "KAYLA", sr: "Odmakni se!", text: "Back away! That isn't a face — it's just meat and calibration!" },
+  { kind: "radio", speaker: "KAYLA", sr: "Čuješ li me?", text: "It's feeding on your grief. Do you hear me? DO YOU HEAR ME?" },
+
   { kind: "narration", text: "I drop the cassette. I back away. The wet, clicking sound behind me is trying to learn her name." },
 ];
 
