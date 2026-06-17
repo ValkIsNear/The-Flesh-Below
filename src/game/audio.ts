@@ -27,7 +27,9 @@ export function unlockAudio() {
 export function setMasterVolume(v: number) {
   masterVolume = Math.max(0, Math.min(1, v));
   if (droneGain) droneGain.gain.value = 0.18 * masterVolume;
+  if (musicGain) musicGain.gain.value = 0.14 * masterVolume;
 }
+
 
 export function startDrone(intensity = 0.5) {
   const c = getCtx();
