@@ -24,11 +24,12 @@ export const AIRLOCK_LINES: Line[] = [
   { kind: "narration", text: "I sit on the rusted bench, the hydraulic in my right leg cold and sluggish. I kick my heel against the floor." },
   { kind: "sfx", text: "Klang. Tap. Klang." },
   { kind: "narration", text: "In my pocket, a broken cigarette I will never light. A useless piece of the surface I carry like a relic." },
-  { kind: "radio", speaker: "KAYLA", sr: "Asset 77-T, javi se. Pritisak na osamsto atmosfera.", text: "Asset 77-T, respond. Pressure at eight hundred atmospheres." },
-  { kind: "radio", speaker: "KAYLA", sr: "Otvaram propust. Proveri zaptivke, Tamara.", text: "Opening the floodgate. Check your seals, Tamara." },
+  { kind: "radio", speaker: "KAYLA", sr: "Javi se.", text: "Asset 77-T, respond. Pressure at eight hundred atmospheres." },
+  { kind: "radio", speaker: "KAYLA", sr: "Proveri zaptivke.", text: "Opening the floodgate. Check your seals, Tamara." },
   { kind: "narration", text: "Her voice is flat. Static-heavy. But it's the only warm thing down here, and we both know it." },
-  { kind: "radio", speaker: "KAYLA", sr: "…Vrati se kući.", text: "…Come back home." },
+  { kind: "radio", speaker: "KAYLA", sr: "Vrati se kući.", text: "…Come back home." },
   { kind: "narration", text: "I don't answer. The floodgate groans open. The Vital Fluid swallows the light." },
+
 ];
 
 export const HUSK_LINES: Line[] = [
