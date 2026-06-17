@@ -1,29 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
+import Game from "@/game/Game";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "SY: The Heavy — a short pixel dive" },
+      {
+        name: "description",
+        content:
+          "A short pixel-art narrative game inspired by Signalis. Dive into The Sub-Strata as Tamara, Asset #77-T. Eight hundred atmospheres of grief.",
+      },
+      { property: "og:title", content: "SY: The Heavy" },
+      {
+        property: "og:description",
+        content: "A short pixel-art dive into the abyss. Inspired by Signalis. Serbian whispers, eight hundred atmospheres, one lost name.",
+      },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+  return <Game />;
 }
