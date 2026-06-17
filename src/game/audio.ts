@@ -1,9 +1,13 @@
-// Minimal procedural audio: deep drone + footstep clangs. No external assets.
+// Minimal procedural audio: deep drone, footstep clangs, and a slow Duster-like
+// ambient music bed (slow detuned chord pad in a minor key with a soft pulse).
 
 let ctx: AudioContext | null = null;
 let droneGain: GainNode | null = null;
 let droneNodes: { osc: OscillatorNode; noise: AudioBufferSourceNode; filter: BiquadFilterNode } | null = null;
+let musicGain: GainNode | null = null;
+let musicNodes: { oscs: OscillatorNode[]; lfo: OscillatorNode; lfoGain: GainNode; timer: number } | null = null;
 let masterVolume = 0.6;
+
 
 function getCtx(): AudioContext | null {
   if (typeof window === "undefined") return null;
