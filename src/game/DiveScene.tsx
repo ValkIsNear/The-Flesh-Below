@@ -318,32 +318,128 @@ export default function DiveScene({ onReach }: Props) {
       }
     }
 
+    // Persistent floating blood droplets that drift up & sideways around the husk.
+    const bloodDrops: { ox: number; oy: number; vx: number; vy: number; r: number; a: number; life: number }[] = [];
+    for (let i = 0; i < 18; i++) {
+      bloodDrops.push({
+        ox: (rnd() - 0.5) * 18,
+        oy: (rnd() - 0.5) * 16 - 2,
+        vx: (rnd() - 0.5) * 4,
+        vy: -2 - rnd() * 4,
+        r: 0.6 + rnd() * 1.6,
+        a: 0.45 + rnd() * 0.4,
+        life: rnd(),
+      });
+    }
+
     function drawHusk(camX: number) {
       if (!ctx) return;
       const hx = Math.floor(husk.x - camX);
       const hy = Math.floor(husk.y);
       const bob = Math.sin(time * 0.6) * 1.2;
-      // shadow
+
+      // ground shadow
       ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.beginPath();
-      ctx.ellipse(hx, hy + 8, 8, 2, 0, 0, Math.PI * 2);
+      ctx.ellipse(hx, hy + 9, 9, 2, 0, 0, Math.PI * 2);
       ctx.fill();
-      // torso
+
+      // dark pool of dispersed blood under the body
+      ctx.fillStyle = `rgba(80, 8, 18, ${0.45 + 0.05 * Math.sin(time * 0.8)})`;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy + 8, 14, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(140, 20, 40, 0.30)";
+      ctx.beginPath();
+      ctx.ellipse(hx - 2, hy + 8, 8, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // torso — battered suit, slumped
       ctx.fillStyle = "#1a1418";
       ctx.fillRect(hx - 5, hy - 8 + bob, 10, 14);
-      // limp arm
       ctx.fillStyle = "#2a1820";
-      ctx.fillRect(hx - 7, hy - 4 + bob, 3, 8);
-      // shattered helmet
+      ctx.fillRect(hx - 5, hy - 8 + bob, 10, 1);
+      // chest rupture — meat showing through cracked plating
+      ctx.fillStyle = "#0a0306";
+      ctx.fillRect(hx - 3, hy - 3 + bob, 6, 5);
+      ctx.fillStyle = `rgba(170, 24, 44, ${0.75 + 0.18 * Math.sin(time * 2.2)})`;
+      ctx.fillRect(hx - 2, hy - 2 + bob, 4, 3);
+      ctx.fillStyle = "rgba(220, 80, 90, 0.55)";
+      ctx.fillRect(hx - 1, hy - 2 + bob, 2, 1);
+      // exposed ribs as thin pale shards
+      ctx.fillStyle = "rgba(200, 180, 160, 0.55)";
+      ctx.fillRect(hx - 2, hy - 1 + bob, 1, 1);
+      ctx.fillRect(hx, hy - 1 + bob, 1, 1);
+      ctx.fillRect(hx + 2, hy - 1 + bob, 1, 1);
+
+      // BROKEN-WING ARM — left arm hangs torn, splayed like a bird's broken wing
+      // upper segment, wrenched outward
+      ctx.fillStyle = "#2a1820";
+      ctx.fillRect(hx - 9, hy - 5 + bob, 4, 2);
+      // joint exposed (red flesh hinge)
+      ctx.fillStyle = "rgba(170, 30, 50, 0.85)";
+      ctx.fillRect(hx - 9, hy - 3 + bob, 2, 2);
+      // forearm bent the wrong way, dangling down
+      ctx.fillStyle = "#1a1014";
+      ctx.fillRect(hx - 10, hy - 1 + bob, 2, 5);
+      // hand — splayed fingers
+      ctx.fillStyle = "#241318";
+      ctx.fillRect(hx - 11, hy + 4 + bob, 1, 2);
+      ctx.fillRect(hx - 9, hy + 4 + bob, 1, 2);
+      ctx.fillRect(hx - 8, hy + 4 + bob, 1, 1);
+      // sinew/strings of tissue from torso to arm — the "broken wing" trailing
+      ctx.strokeStyle = "rgba(140, 20, 40, 0.6)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hx - 5, hy - 4 + bob);
+      ctx.lineTo(hx - 8, hy - 1 + bob);
+      ctx.moveTo(hx - 5, hy - 2 + bob);
+      ctx.lineTo(hx - 9, hy + 1 + bob);
+      ctx.stroke();
+
+      // right arm — limp at side
+      ctx.fillStyle = "#2a1820";
+      ctx.fillRect(hx + 5, hy - 4 + bob, 2, 8);
+
+      // shattered helmet, faceplate cracked open
       ctx.fillStyle = "#3a1218";
       ctx.fillRect(hx - 3, hy - 11 + bob, 6, 5);
-      // exposed meat
-      ctx.fillStyle = `rgba(180, 30, 50, ${0.7 + 0.2 * Math.sin(time * 2)})`;
+      ctx.fillStyle = "#0a0408";
       ctx.fillRect(hx - 2, hy - 10 + bob, 4, 2);
-      // tendrils to floor
-      ctx.fillStyle = "rgba(80, 10, 20, 0.6)";
+      // crack
+      ctx.fillStyle = "#e8d8c8";
+      ctx.fillRect(hx, hy - 11 + bob, 1, 4);
+      // exposed meat where the face should be
+      ctx.fillStyle = `rgba(190, 30, 50, ${0.7 + 0.2 * Math.sin(time * 2)})`;
+      ctx.fillRect(hx - 1, hy - 9 + bob, 2, 1);
+
+      // floating blood droplets — pressure carries them upward
+      for (const d of bloodDrops) {
+        d.life += 0.016;
+        if (d.life > 1.6) {
+          d.life = 0;
+          d.ox = (rnd() - 0.5) * 14;
+          d.oy = (rnd() - 0.5) * 10 - 2;
+        }
+        const fx = hx + d.ox + d.vx * d.life;
+        const fy = hy + d.oy + d.vy * d.life;
+        const fade = Math.max(0, 1 - d.life / 1.6);
+        ctx.fillStyle = `rgba(180, 28, 48, ${d.a * fade})`;
+        ctx.beginPath();
+        ctx.arc(Math.floor(fx), Math.floor(fy), d.r, 0, Math.PI * 2);
+        ctx.fill();
+        // tiny brighter highlight
+        if (d.r > 1) {
+          ctx.fillStyle = `rgba(230, 120, 130, ${0.5 * fade})`;
+          ctx.fillRect(Math.floor(fx), Math.floor(fy) - 1, 1, 1);
+        }
+      }
+
+      // tendrils anchoring corpse to floor
+      ctx.fillStyle = "rgba(80, 10, 20, 0.7)";
       ctx.fillRect(hx - 1, hy + 6, 1, 4);
       ctx.fillRect(hx + 2, hy + 6, 1, 3);
+      ctx.fillRect(hx - 4, hy + 7, 1, 2);
     }
 
     function drawPlayer() {
