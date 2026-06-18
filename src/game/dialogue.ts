@@ -64,10 +64,10 @@ export const CREDITS = {
   title: "SY",
   subtitle: "The Heavy — Prototype",
   lines: [
-    "A short dive by a single team.",
-    "Inspired by Signalis, Pressure, KOG, and a melancholic Europabiz playlist.",
+    "A short project by valk.is.near",
+    "Inspired by Signalis, Pressure, KOG, solo P88.",
     "Music: silence and the pressure of eight hundred atmospheres.",
     "",
-    "Hvala što si zaronila sa nama.",
+    "Thank you for the support.",
   ],
 };
