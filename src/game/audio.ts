@@ -77,89 +77,28 @@ export function stopDrone() {
   }
 }
 
+// Simple, retro "klang" — square-wave decay reminiscent of early survival-horror
+// footsteps. The "hydraulic" variant is a softer, lower thunk used for airlocks.
 export function clang(kind: "step" | "hydraulic" = "step") {
   const c = getCtx();
   if (!c) return;
   const now = c.currentTime;
-  const out = c.createGain();
-  out.gain.value = 0.9 * masterVolume;
-  out.connect(c.destination);
-
-  // Inharmonic partials of a struck metal bar / pipe.
-  const partials =
-    kind === "hydraulic"
-      ? [
-          { f: 180, a: 0.45, d: 0.55 },
-          { f: 412, a: 0.22, d: 0.40 },
-          { f: 870, a: 0.10, d: 0.22 },
-          { f: 1530, a: 0.05, d: 0.14 },
-        ]
-      : [
-          { f: 380, a: 0.40, d: 0.32 },
-          { f: 932, a: 0.28, d: 0.22 },
-          { f: 1720, a: 0.18, d: 0.16 },
-          { f: 2640, a: 0.10, d: 0.10 },
-          { f: 3870, a: 0.06, d: 0.07 },
-        ];
-
-  for (const p of partials) {
-    const o = c.createOscillator();
-    o.type = "sine";
-    o.frequency.value = p.f;
-    const g = c.createGain();
-    g.gain.setValueAtTime(0.0001, now);
-    g.gain.exponentialRampToValueAtTime(p.a * 0.5, now + 0.002);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + p.d);
-    o.connect(g).connect(out);
-    o.start(now);
-    o.stop(now + p.d + 0.02);
-  }
-
-  // Low thump body — weight of the boot on deck plate
-  const thump = c.createOscillator();
-  thump.type = "sine";
-  thump.frequency.setValueAtTime(kind === "hydraulic" ? 95 : 140, now);
-  thump.frequency.exponentialRampToValueAtTime(40, now + 0.12);
-  const tg = c.createGain();
-  tg.gain.setValueAtTime(0.0001, now);
-  tg.gain.exponentialRampToValueAtTime(0.45, now + 0.004);
-  tg.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-  thump.connect(tg).connect(out);
-  thump.start(now);
-  thump.stop(now + 0.22);
-
-  // Short bright noise transient — the strike itself
-  const nBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.08), c.sampleRate);
-  const nd = nBuf.getChannelData(0);
-  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / nd.length, 3);
-  const n = c.createBufferSource();
-  n.buffer = nBuf;
-  const nf = c.createBiquadFilter();
-  nf.type = "highpass";
-  nf.frequency.value = kind === "hydraulic" ? 800 : 2200;
-  const ng = c.createGain();
-  ng.gain.value = kind === "hydraulic" ? 0.18 : 0.28;
-  n.connect(nf).connect(ng).connect(out);
-  n.start(now);
-
-  if (kind === "hydraulic") {
-    // Pneumatic hiss tail
-    const hBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.35), c.sampleRate);
-    const hd = hBuf.getChannelData(0);
-    for (let i = 0; i < hd.length; i++) hd[i] = (Math.random() * 2 - 1) * (1 - i / hd.length);
-    const h = c.createBufferSource();
-    h.buffer = hBuf;
-    const hf = c.createBiquadFilter();
-    hf.type = "bandpass";
-    hf.frequency.value = 2800;
-    hf.Q.value = 0.7;
-    const hg = c.createGain();
-    hg.gain.value = 0.18;
-    h.connect(hf).connect(hg).connect(out);
-    h.start(now + 0.04);
-  }
-
-  setTimeout(() => { try { out.disconnect(); } catch { /* noop */ } }, 900);
+  const o = c.createOscillator();
+  const g = c.createGain();
+  o.type = "square";
+  const baseFreq = kind === "hydraulic" ? 110 : 180;
+  const endFreq = kind === "hydraulic" ? 55 : 90;
+  o.frequency.setValueAtTime(baseFreq, now);
+  o.frequency.exponentialRampToValueAtTime(endFreq, now + 0.14);
+  // airlock noticeably softer than before; steps a clean klang
+  const amp = (kind === "hydraulic" ? 0.10 : 0.22) * masterVolume;
+  const dur = kind === "hydraulic" ? 0.28 : 0.22;
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(amp, now + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  o.connect(g).connect(c.destination);
+  o.start(now);
+  o.stop(now + dur + 0.02);
 }
 
 export function heartbeat() {
