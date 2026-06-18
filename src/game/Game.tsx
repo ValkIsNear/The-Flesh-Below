@@ -297,8 +297,19 @@ function Styles() {
         mix-blend-mode: multiply;
       }
       .sy-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-      .sy-title { background: radial-gradient(circle at 50% 40%, #1a0612 0%, #050306 70%); }
-      .sy-title-inner { text-align: center; max-width: 540px; padding: 24px; }
+      .sy-title { background: radial-gradient(circle at 50% 40%, #1a0612 0%, #050306 70%); overflow: hidden; }
+      .sy-title-light {
+        pointer-events: none; position: absolute; inset: 0; z-index: 1;
+        background: radial-gradient(
+          240px circle at var(--mx, 50%) var(--my, 50%),
+          rgba(255, 210, 170, 0.18) 0%,
+          rgba(200, 80, 90, 0.10) 35%,
+          rgba(0,0,0,0) 70%
+        );
+        mix-blend-mode: screen;
+        transition: background 60ms linear;
+      }
+      .sy-title-inner { position: relative; z-index: 2; text-align: center; max-width: 540px; padding: 24px; }
       .sy-mark {
         font-family: "Times New Roman", serif; font-size: 112px; letter-spacing: 0.2em;
         color: #f1e6d6; text-shadow: 0 0 30px rgba(180, 40, 60, 0.4);
