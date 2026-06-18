@@ -90,8 +90,23 @@ export default function Game() {
 }
 
 function Title({ onStart, volume, setVolume }: { onStart: () => void; volume: number; setVolume: (n: number) => void }) {
+  const lightRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = lightRef.current;
+    if (!el) return;
+    const onMove = (e: MouseEvent) => {
+      el.style.setProperty("--mx", `${e.clientX}px`);
+      el.style.setProperty("--my", `${e.clientY}px`);
+    };
+    window.addEventListener("mousemove", onMove);
+    // initial center
+    el.style.setProperty("--mx", `${window.innerWidth / 2}px`);
+    el.style.setProperty("--my", `${window.innerHeight / 2}px`);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
   return (
     <div className="sy-screen sy-title">
+      <div ref={lightRef} className="sy-title-light" aria-hidden />
       <div className="sy-title-inner">
         <div className="sy-mark">SY</div>
         <div className="sy-sub">The Heavy</div>
@@ -282,8 +297,19 @@ function Styles() {
         mix-blend-mode: multiply;
       }
       .sy-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-      .sy-title { background: radial-gradient(circle at 50% 40%, #1a0612 0%, #050306 70%); }
-      .sy-title-inner { text-align: center; max-width: 540px; padding: 24px; }
+      .sy-title { background: radial-gradient(circle at 50% 40%, #1a0612 0%, #050306 70%); overflow: hidden; }
+      .sy-title-light {
+        pointer-events: none; position: absolute; inset: 0; z-index: 1;
+        background: radial-gradient(
+          240px circle at var(--mx, 50%) var(--my, 50%),
+          rgba(255, 210, 170, 0.18) 0%,
+          rgba(200, 80, 90, 0.10) 35%,
+          rgba(0,0,0,0) 70%
+        );
+        mix-blend-mode: screen;
+        transition: background 60ms linear;
+      }
+      .sy-title-inner { position: relative; z-index: 2; text-align: center; max-width: 540px; padding: 24px; }
       .sy-mark {
         font-family: "Times New Roman", serif; font-size: 112px; letter-spacing: 0.2em;
         color: #f1e6d6; text-shadow: 0 0 30px rgba(180, 40, 60, 0.4);
