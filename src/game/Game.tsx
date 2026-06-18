@@ -90,8 +90,23 @@ export default function Game() {
 }
 
 function Title({ onStart, volume, setVolume }: { onStart: () => void; volume: number; setVolume: (n: number) => void }) {
+  const lightRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = lightRef.current;
+    if (!el) return;
+    const onMove = (e: MouseEvent) => {
+      el.style.setProperty("--mx", `${e.clientX}px`);
+      el.style.setProperty("--my", `${e.clientY}px`);
+    };
+    window.addEventListener("mousemove", onMove);
+    // initial center
+    el.style.setProperty("--mx", `${window.innerWidth / 2}px`);
+    el.style.setProperty("--my", `${window.innerHeight / 2}px`);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
   return (
     <div className="sy-screen sy-title">
+      <div ref={lightRef} className="sy-title-light" aria-hidden />
       <div className="sy-title-inner">
         <div className="sy-mark">SY</div>
         <div className="sy-sub">The Heavy</div>
