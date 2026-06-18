@@ -301,13 +301,13 @@ function Styles() {
       .sy-title-light {
         pointer-events: none; position: absolute; inset: 0; z-index: 1;
         background: radial-gradient(
-          240px circle at var(--mx, 50%) var(--my, 50%),
-          rgba(255, 210, 170, 0.18) 0%,
-          rgba(200, 80, 90, 0.10) 35%,
-          rgba(0,0,0,0) 70%
+          640px circle at var(--mx, 50%) var(--my, 50%),
+          rgba(255, 210, 170, 0.09) 0%,
+          rgba(200, 80, 90, 0.05) 45%,
+          rgba(0,0,0,0) 80%
         );
         mix-blend-mode: screen;
-        transition: background 60ms linear;
+        transition: background 80ms linear;
       }
       .sy-title-inner { position: relative; z-index: 2; text-align: center; max-width: 540px; padding: 24px; }
       .sy-mark {
