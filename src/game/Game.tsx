@@ -11,8 +11,9 @@ import {
 import { clang, heartbeat, setMasterVolume, startDrone, startMusic, stopDrone, stopMusic, unlockAudio } from "./audio";
 
 const DiveScene = lazy(() => import("./DiveScene"));
+const ChaseCutscene = lazy(() => import("./ChaseCutscene"));
 
-type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "morgue" | "credits";
+type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "morgue" | "credits";
 
 export default function Game() {
   const [scene, setScene] = useState<Scene>("title");
@@ -76,11 +77,16 @@ export default function Game() {
         <Reader
           title="Sector Gamma-7"
           lines={HUSK_LINES}
-          onDone={() => setScene("morgue")}
+          onDone={() => setScene("chase")}
           onLine={(l) => {
             if (l.kind === "radio" && l.speaker === "ABYSS") heartbeat();
           }}
         />
+      )}
+      {scene === "chase" && (
+        <Suspense fallback={<LoadingPanel />}>
+          <ChaseCutscene onDone={() => setScene("morgue")} />
+        </Suspense>
       )}
       {scene === "morgue" && <Reader title="The Morgue" lines={MORGUE_LINES} onDone={() => setScene("credits")} />}
       {scene === "credits" && <Credits onRestart={() => setScene("title")} />}
