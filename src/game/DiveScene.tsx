@@ -155,7 +155,7 @@ export default function DiveScene({ onReach }: Props) {
     function proj(p: V3) {
       // slight vertex snapping = PS1 jitter
       const sx = W / 2 + (p.x * FOCAL) / p.z;
-      const sy = H / 2 - (p.y * FOCAL) / p.z;
+      const sy = H * 0.42 - (p.y * FOCAL) / p.z;
       return { x: Math.round(sx * 0.75) / 0.75, y: Math.round(sy * 0.75) / 0.75 };
     }
 
@@ -336,8 +336,8 @@ export default function DiveScene({ onReach }: Props) {
       player.z = Math.max(0.6, Math.min(CORRIDOR_LEN - 1.2, player.z));
 
       // camera trails behind player (Tomb Raider style chase cam)
-      const tx = player.x - Math.sin(player.yaw) * 2.6;
-      const tz = player.z - Math.cos(player.yaw) * 2.6;
+      const tx = player.x - Math.sin(player.yaw) * 4.4;
+      const tz = player.z - Math.cos(player.yaw) * 4.4;
       const k = Math.min(1, dt * 4.5);
       cam.x += (tx - cam.x) * k;
       cam.z += (tz - cam.z) * k;
@@ -345,7 +345,7 @@ export default function DiveScene({ onReach }: Props) {
       while (dy > Math.PI) dy -= Math.PI * 2;
       while (dy < -Math.PI) dy += Math.PI * 2;
       cam.yaw += dy * Math.min(1, dt * 5);
-      cam.y += (1.85 - cam.y) * k;
+      cam.y += (2.35 - cam.y) * k;
 
       const moving = fwd !== 0 || strafe !== 0;
       if (moving) {
