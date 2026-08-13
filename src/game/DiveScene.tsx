@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 import { clang } from "./audio";
 
-// Low-poly software-rendered 3D corridor — early Tomb Raider / PS1 look.
-// Flat-shaded textured-ish polygons, chunky vertex fog, wobbly vertex snapping,
-// third-person camera trailing Tamara through Sector Gamma-7.
+// First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
+// Affine-mapped textured triangles, chunky low-res buffer, heavy distance fog,
+// wobbling vertex snap. You walk the flooded maintenance corridor of Gamma-7.
 type Props = { onReach: () => void };
 
 const W = 480;
@@ -12,16 +12,12 @@ const FOCAL = 300;
 const CORRIDOR_LEN = 60;
 const HALF_W = 2.6;
 const CEIL = 3.2;
-const FOG_NEAR = 6;
-const FOG_FAR = 34;
-const FOG = [22, 12, 16] as const;
+const FOG_NEAR = 5;
+const FOG_FAR = 30;
+const FOG = [24, 13, 17] as const;
 
-type V3 = { x: number; y: number; z: number };
-type Poly = { v: V3[]; c: [number, number, number]; light?: number };
-
-function rgb(c: readonly number[], f: number) {
-  return `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
-}
+type V3 = { x: number; y: number; z: number; u?: number; w?: number };
+type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
 
 export default function DiveScene({ onReach }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -40,103 +36,225 @@ export default function DiveScene({ onReach }: Props) {
       return seed / 0xffffffff;
     };
 
-    const player = { x: 0, z: 1.5, yaw: 0, step: 0 };
-    const cam = { x: 0, y: 1.7, z: -1.6, yaw: 0 };
+    // ---- procedural PS1-ish textures (64x64) -----------------------------
+    function makeTex(draw: (c: CanvasRenderingContext2D) => void) {
+      const t = document.createElement("canvas");
+      t.width = 64;
+      t.height = 64;
+      const c = t.getContext("2d")!;
+      c.imageSmoothingEnabled = false;
+      draw(c);
+      return t;
+    }
+    const grain = (c: CanvasRenderingContext2D, amt: number) => {
+      for (let i = 0; i < 900; i++) {
+        const x = Math.floor(rnd() * 64);
+        const y = Math.floor(rnd() * 64);
+        c.fillStyle = `rgba(${rnd() > 0.5 ? 255 : 0},${rnd() > 0.6 ? 200 : 0},${rnd() > 0.7 ? 180 : 0},${rnd() * amt})`;
+        c.fillRect(x, y, 1 + (rnd() > 0.85 ? 1 : 0), 1);
+      }
+    };
+    const texFloor = makeTex((c) => {
+      c.fillStyle = "#4a3330";
+      c.fillRect(0, 0, 64, 64);
+      for (let y = 0; y < 64; y += 32)
+        for (let x = 0; x < 64; x += 32) {
+          c.fillStyle = "#5a3d36";
+          c.fillRect(x + 2, y + 2, 28, 28);
+          c.fillStyle = "rgba(0,0,0,0.45)";
+          c.fillRect(x, y, 64 > 0 ? 2 : 0, 32);
+          c.fillRect(x, y, 32, 2);
+          c.fillStyle = "rgba(120,80,60,0.25)";
+          c.fillRect(x + 4, y + 4, 24, 2);
+        }
+      grain(c, 0.35);
+    });
+    const texWall = makeTex((c) => {
+      c.fillStyle = "#4b3230";
+      c.fillRect(0, 0, 64, 64);
+      c.fillStyle = "#583a34";
+      c.fillRect(3, 3, 58, 26);
+      c.fillStyle = "#422b2b";
+      c.fillRect(3, 34, 58, 26);
+      c.fillStyle = "rgba(0,0,0,0.5)";
+      c.fillRect(0, 30, 64, 3);
+      // rivets
+      c.fillStyle = "#7d5540";
+      for (let x = 6; x < 60; x += 12) {
+        c.fillRect(x, 6, 2, 2);
+        c.fillRect(x, 55, 2, 2);
+      }
+      // rust streaks
+      for (let i = 0; i < 14; i++) {
+        const x = Math.floor(rnd() * 64);
+        c.fillStyle = `rgba(90,45,25,${0.15 + rnd() * 0.3})`;
+        c.fillRect(x, Math.floor(rnd() * 30), 1 + Math.floor(rnd() * 2), 20 + Math.floor(rnd() * 30));
+      }
+      grain(c, 0.3);
+    });
+    const texBand = makeTex((c) => {
+      c.fillStyle = "#6b4a1c";
+      c.fillRect(0, 0, 64, 64);
+      for (let i = -64; i < 64; i += 12) {
+        c.fillStyle = "#2a1c10";
+        c.beginPath();
+        c.moveTo(i, 0);
+        c.lineTo(i + 6, 0);
+        c.lineTo(i + 6 + 20, 64);
+        c.lineTo(i + 20, 64);
+        c.closePath();
+        c.fill();
+      }
+      grain(c, 0.4);
+    });
+    const texCeil = makeTex((c) => {
+      c.fillStyle = "#2a1d24";
+      c.fillRect(0, 0, 64, 64);
+      c.fillStyle = "#20161c";
+      c.fillRect(0, 26, 64, 12);
+      c.fillStyle = "rgba(0,0,0,0.5)";
+      c.fillRect(0, 0, 64, 2);
+      grain(c, 0.25);
+    });
+    const texCrate = makeTex((c) => {
+      c.fillStyle = "#6a4620";
+      c.fillRect(0, 0, 64, 64);
+      c.fillStyle = "#4a2f16";
+      c.fillRect(4, 4, 56, 56);
+      c.fillStyle = "#83592a";
+      c.fillRect(8, 8, 48, 6);
+      c.fillRect(8, 50, 48, 6);
+      grain(c, 0.35);
+    });
+    const texMeat = makeTex((c) => {
+      c.fillStyle = "#4a1a24";
+      c.fillRect(0, 0, 64, 64);
+      for (let i = 0; i < 120; i++) {
+        c.fillStyle = `rgba(${120 + rnd() * 110},${10 + rnd() * 30},${30 + rnd() * 30},${0.3 + rnd() * 0.5})`;
+        c.fillRect(rnd() * 64, rnd() * 64, 1 + rnd() * 4, 1 + rnd() * 3);
+      }
+    });
+    const texSuit = makeTex((c) => {
+      c.fillStyle = "#3a2830";
+      c.fillRect(0, 0, 64, 64);
+      c.fillStyle = "#4a3440";
+      c.fillRect(2, 2, 60, 28);
+      c.fillStyle = "#241820";
+      c.fillRect(0, 32, 64, 6);
+      grain(c, 0.25);
+    });
 
+    // ---- level -----------------------------------------------------------
+    const level: Poly[] = [];
+    const quad = (a: V3, b: V3, c: V3, d: V3, tex: HTMLCanvasElement, shade = 1) => {
+      level.push({
+        v: [
+          { ...a, u: 0, w: 0 },
+          { ...b, u: 1, w: 0 },
+          { ...c, u: 1, w: 1 },
+          { ...d, u: 0, w: 1 },
+        ],
+        tex,
+        shade,
+      });
+    };
+
+    const SEG = 2;
+    for (let z = 0; z < CORRIDOR_LEN; z += SEG) {
+      const z2 = z + SEG;
+      quad({ x: -HALF_W, y: 0, z }, { x: HALF_W, y: 0, z }, { x: HALF_W, y: 0, z: z2 }, { x: -HALF_W, y: 0, z: z2 }, texFloor, 0.95);
+      quad({ x: -HALF_W, y: CEIL, z }, { x: -HALF_W, y: CEIL, z: z2 }, { x: HALF_W, y: CEIL, z: z2 }, { x: HALF_W, y: CEIL, z }, texCeil, 0.55);
+      for (const s of [-1, 1] as const) {
+        const x = s * HALF_W;
+        const shade = s < 0 ? 0.85 : 1;
+        quad({ x, y: 0, z }, { x, y: 1.1, z }, { x, y: 1.1, z: z2 }, { x, y: 0, z: z2 }, texWall, shade * 0.9);
+        quad({ x, y: 1.1, z }, { x, y: 1.45, z }, { x, y: 1.45, z: z2 }, { x, y: 1.1, z: z2 }, texBand, shade);
+        quad({ x, y: 1.45, z }, { x, y: CEIL, z }, { x, y: CEIL, z: z2 }, { x, y: 1.45, z: z2 }, texWall, shade * 0.8);
+      }
+    }
+    // far wall behind the husk
+    quad(
+      { x: -HALF_W, y: 0, z: CORRIDOR_LEN },
+      { x: -HALF_W, y: CEIL, z: CORRIDOR_LEN },
+      { x: HALF_W, y: CEIL, z: CORRIDOR_LEN },
+      { x: HALF_W, y: 0, z: CORRIDOR_LEN },
+      texMeat,
+      0.8,
+    );
+
+    const boxInto = (
+      out: Poly[],
+      cx: number,
+      cy: number,
+      cz: number,
+      w: number,
+      h: number,
+      d: number,
+      tex: HTMLCanvasElement,
+    ) => {
+      const x0 = cx - w / 2,
+        x1 = cx + w / 2,
+        z0 = cz - d / 2,
+        z1 = cz + d / 2,
+        y0 = cy,
+        y1 = cy + h;
+      const f = (a: V3, b: V3, c: V3, dd: V3, shade: number) =>
+        out.push({
+          v: [
+            { ...a, u: 0, w: 0 },
+            { ...b, u: 1, w: 0 },
+            { ...c, u: 1, w: 1 },
+            { ...dd, u: 0, w: 1 },
+          ],
+          tex,
+          shade,
+        });
+      f({ x: x0, y: y1, z: z0 }, { x: x1, y: y1, z: z0 }, { x: x1, y: y1, z: z1 }, { x: x0, y: y1, z: z1 }, 1.25);
+      f({ x: x0, y: y0, z: z0 }, { x: x0, y: y1, z: z0 }, { x: x1, y: y1, z: z0 }, { x: x1, y: y0, z: z0 }, 1);
+      f({ x: x1, y: y0, z: z1 }, { x: x1, y: y1, z: z1 }, { x: x0, y: y1, z: z1 }, { x: x0, y: y0, z: z1 }, 0.85);
+      f({ x: x0, y: y0, z: z1 }, { x: x0, y: y1, z: z1 }, { x: x0, y: y1, z: z0 }, { x: x0, y: y0, z: z0 }, 0.7);
+      f({ x: x1, y: y0, z: z0 }, { x: x1, y: y1, z: z0 }, { x: x1, y: y1, z: z1 }, { x: x1, y: y0, z: z1 }, 0.75);
+    };
+
+    for (let z = 5; z < CORRIDOR_LEN - 6; z += 4 + rnd() * 5) {
+      const s = rnd() > 0.5 ? -1 : 1;
+      const x = s * (HALF_W - 0.55 - rnd() * 0.3);
+      const r = rnd();
+      if (r < 0.45) boxInto(level, x, 0, z, 0.95, 0.95, 0.95, texCrate);
+      else if (r < 0.75) boxInto(level, x, 0, z, 0.7, 1.25, 0.7, texWall);
+      else boxInto(level, x, 0, z, 1.2, 0.65, 0.7, texSuit);
+    }
+
+    const lamps: { x: number; y: number; z: number; phase: number }[] = [];
+    for (let z = 6; z < CORRIDOR_LEN; z += 7) {
+      lamps.push({ x: (rnd() > 0.5 ? -1 : 1) * (HALF_W - 0.12), y: 2.5, z, phase: rnd() * 6.28 });
+    }
+
+    // ---- camera / input ---------------------------------------------------
+    const cam = { x: 0, y: 1.62, z: 1.5, yaw: 0, bob: 0 };
     const keys = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
       keys.add(e.key.toLowerCase());
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(e.key.toLowerCase())) e.preventDefault();
     };
     const onUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
+    const onMouse = (e: MouseEvent) => {
+      if (document.pointerLockElement === canvas) cam.yaw += e.movementX * 0.0022;
+    };
+    const onClick = () => canvas.requestPointerLock?.();
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
+    window.addEventListener("mousemove", onMouse);
+    canvas.addEventListener("click", onClick);
 
-    // ---- static level geometry -------------------------------------------
-    const level: Poly[] = [];
-    const quad = (a: V3, b: V3, c: V3, d: V3, col: [number, number, number]) =>
-      level.push({ v: [a, b, c, d], c: col });
-
-    const SEG = 2;
-    for (let z = 0; z < CORRIDOR_LEN; z += SEG) {
-      const z2 = z + SEG;
-      const t = (z / SEG) % 2;
-      // floor plates
-      const fl: [number, number, number] = t ? [58, 40, 38] : [48, 33, 32];
-      quad({ x: -HALF_W, y: 0, z }, { x: HALF_W, y: 0, z }, { x: HALF_W, y: 0, z: z2 }, { x: -HALF_W, y: 0, z: z2 }, fl);
-      // ceiling
-      quad(
-        { x: -HALF_W, y: CEIL, z },
-        { x: -HALF_W, y: CEIL, z: z2 },
-        { x: HALF_W, y: CEIL, z: z2 },
-        { x: HALF_W, y: CEIL, z },
-        t ? [30, 20, 26] : [24, 16, 22],
-      );
-      // walls: lower plate, mid band, upper plate (gives banded TR-style texture)
-      for (const s of [-1, 1] as const) {
-        const x = s * HALF_W;
-        const bands: [number, number, [number, number, number]][] = [
-          [0, 0.9, t ? [62, 42, 36] : [54, 36, 31]],
-          [0.9, 1.25, [86, 52, 30]],
-          [1.25, 2.3, t ? [50, 34, 34] : [44, 29, 30]],
-          [2.3, CEIL, [34, 22, 26]],
-        ];
-        for (const [y0, y1, col] of bands) {
-          quad({ x, y: y0, z }, { x, y: y1, z }, { x, y: y1, z: z2 }, { x, y: y0, z: z2 }, col);
-        }
-        // rib pillar every 4 units
-        if ((z / SEG) % 2 === 0) {
-          const xi = s * (HALF_W - 0.12);
-          quad(
-            { x: xi, y: 0, z: z + 0.3 },
-            { x: xi, y: CEIL, z: z + 0.3 },
-            { x: xi, y: CEIL, z: z + 0.65 },
-            { x: xi, y: 0, z: z + 0.65 },
-            [78, 50, 40],
-          );
-        }
-      }
-    }
-
-    // props: boxes along the walls
-    const box = (cx: number, cz: number, w: number, h: number, d: number, col: [number, number, number]) => {
-      const x0 = cx - w / 2,
-        x1 = cx + w / 2,
-        z0 = cz - d / 2,
-        z1 = cz + d / 2;
-      const top: [number, number, number] = [col[0] * 1.25, col[1] * 1.25, col[2] * 1.25];
-      const side: [number, number, number] = [col[0] * 0.7, col[1] * 0.7, col[2] * 0.7];
-      quad({ x: x0, y: h, z: z0 }, { x: x1, y: h, z: z0 }, { x: x1, y: h, z: z1 }, { x: x0, y: h, z: z1 }, top);
-      quad({ x: x0, y: 0, z: z0 }, { x: x0, y: h, z: z0 }, { x: x1, y: h, z: z0 }, { x: x1, y: 0, z: z0 }, col);
-      quad({ x: x1, y: 0, z: z1 }, { x: x1, y: h, z: z1 }, { x: x0, y: h, z: z1 }, { x: x0, y: 0, z: z1 }, col);
-      quad({ x: x0, y: 0, z: z1 }, { x: x0, y: h, z: z1 }, { x: x0, y: h, z: z0 }, { x: x0, y: 0, z: z0 }, side);
-      quad({ x: x1, y: 0, z: z0 }, { x: x1, y: h, z: z0 }, { x: x1, y: h, z: z1 }, { x: x1, y: 0, z: z1 }, side);
-    };
-
-    for (let z = 5; z < CORRIDOR_LEN - 6; z += 4 + rnd() * 5) {
-      const s = rnd() > 0.5 ? -1 : 1;
-      const r = rnd();
-      const x = s * (HALF_W - 0.5 - rnd() * 0.3);
-      if (r < 0.4) box(x, z, 0.9, 0.9, 0.9, [70, 46, 30]);
-      else if (r < 0.7) box(x, z, 0.7, 1.2, 0.7, [58, 32, 28]);
-      else box(x, z, 1.2, 0.7, 0.6, [40, 40, 48]);
-    }
-
-    // emergency lamps (billboarded glows in screen space)
-    const lamps: { x: number; y: number; z: number; phase: number }[] = [];
-    for (let z = 6; z < CORRIDOR_LEN; z += 8) {
-      lamps.push({ x: (rnd() > 0.5 ? -1 : 1) * (HALF_W - 0.1), y: 2.4, z, phase: rnd() * 6.28 });
-    }
-
-    // ---- transform / raster ----------------------------------------------
     function toCam(p: V3): V3 {
       const dx = p.x - cam.x;
       const dz = p.z - cam.z;
       const c = Math.cos(-cam.yaw),
         s = Math.sin(-cam.yaw);
-      return { x: dx * c - dz * s, y: p.y - cam.y, z: dx * s + dz * c };
+      return { x: dx * c - dz * s, y: p.y - (cam.y + cam.bob), z: dx * s + dz * c, u: p.u, w: p.w };
     }
-    const NEAR = 0.25;
+    const NEAR = 0.2;
     function clipNear(v: V3[]): V3[] {
       const out: V3[] = [];
       for (let i = 0; i < v.length; i++) {
@@ -147,167 +265,124 @@ export default function DiveScene({ onReach }: Props) {
         if (ain) out.push(a);
         if (ain !== bin) {
           const t = (NEAR - a.z) / (b.z - a.z);
-          out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: NEAR });
+          out.push({
+            x: a.x + (b.x - a.x) * t,
+            y: a.y + (b.y - a.y) * t,
+            z: NEAR,
+            u: (a.u ?? 0) + ((b.u ?? 0) - (a.u ?? 0)) * t,
+            w: (a.w ?? 0) + ((b.w ?? 0) - (a.w ?? 0)) * t,
+          });
         }
       }
       return out;
     }
     function proj(p: V3) {
-      // slight vertex snapping = PS1 jitter
       const sx = W / 2 + (p.x * FOCAL) / p.z;
-      const sy = H * 0.42 - (p.y * FOCAL) / p.z;
-      return { x: Math.round(sx * 0.75) / 0.75, y: Math.round(sy * 0.75) / 0.75 };
+      const sy = H / 2 - (p.y * FOCAL) / p.z;
+      // PS1 vertex snapping
+      return { x: Math.round(sx * 0.8) / 0.8, y: Math.round(sy * 0.8) / 0.8, u: p.u ?? 0, w: p.w ?? 0, z: p.z };
+    }
+
+    type SP = { x: number; y: number; u: number; w: number; z: number };
+    function drawTexTri(a: SP, b: SP, c: SP, tex: HTMLCanvasElement, tint: string) {
+      if (!ctx) return;
+      const TS = tex.width;
+      const u0 = a.u * TS,
+        v0 = a.w * TS,
+        u1 = b.u * TS,
+        v1 = b.w * TS,
+        u2 = c.u * TS,
+        v2 = c.w * TS;
+      const den = u0 * (v2 - v1) - u1 * v2 + u2 * v1 + (u1 - u2) * v0;
+      if (den === 0) return;
+      const m11 = -(v0 * (c.x - b.x) - v1 * c.x + v2 * b.x + (v1 - v2) * a.x) / den;
+      const m12 = (v1 * c.y + v0 * (b.y - c.y) - v2 * b.y + (v2 - v1) * a.y) / den;
+      const m21 = (u0 * (c.x - b.x) - u1 * c.x + u2 * b.x + (u1 - u2) * a.x) / den;
+      const m22 = -(u1 * c.y + u0 * (b.y - c.y) - u2 * b.y + (u2 - u1) * a.y) / den;
+      const dx = (u0 * (v2 * b.x - v1 * c.x) + v0 * (u1 * c.x - u2 * b.x) + (u2 * v1 - u1 * v2) * a.x) / den;
+      const dy = (u0 * (v2 * b.y - v1 * c.y) + v0 * (u1 * c.y - u2 * b.y) + (u2 * v1 - u1 * v2) * a.y) / den;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.closePath();
+      ctx.clip();
+      ctx.transform(m11, m12, m21, m22, dx, dy);
+      ctx.drawImage(tex, 0, 0);
+      ctx.restore();
+      // shade + fog pass over the same triangle
+      ctx.fillStyle = tint;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(c.x, c.y);
+      ctx.closePath();
+      ctx.fill();
     }
 
     function drawPolys(polys: Poly[]) {
       if (!ctx) return;
-      const list: { pts: { x: number; y: number }[]; depth: number; c: [number, number, number]; light: number }[] = [];
+      const list: { pts: SP[]; depth: number; p: Poly }[] = [];
       for (const p of polys) {
-        const cv = p.v.map(toCam);
-        const clipped = clipNear(cv);
+        const clipped = clipNear(p.v.map(toCam));
         if (clipped.length < 3) continue;
         let depth = 0;
         for (const v of clipped) depth += v.z;
         depth /= clipped.length;
-        if (depth > FOG_FAR + 6) continue;
-        list.push({ pts: clipped.map(proj), depth, c: p.c, light: p.light ?? 1 });
+        if (depth > FOG_FAR + 8) continue;
+        list.push({ pts: clipped.map(proj), depth, p });
       }
       list.sort((a, b) => b.depth - a.depth);
       for (const q of list) {
         const fog = Math.min(1, Math.max(0, (q.depth - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
-        const l = q.light;
-        const r = q.c[0] * l * (1 - fog) + FOG[0] * fog;
-        const g = q.c[1] * l * (1 - fog) + FOG[1] * fog;
-        const b = q.c[2] * l * (1 - fog) + FOG[2] * fog;
-        ctx.fillStyle = `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
-        ctx.beginPath();
-        ctx.moveTo(q.pts[0].x, q.pts[0].y);
-        for (let i = 1; i < q.pts.length; i++) ctx.lineTo(q.pts[i].x, q.pts[i].y);
-        ctx.closePath();
-        ctx.fill();
-        // gouraud-ish seam so polys read as separate faces
-        ctx.strokeStyle = `rgba(0,0,0,${0.25 * (1 - fog)})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        const shade = q.p.shade ?? 1;
+        if (q.p.tex) {
+          // darkness from shading + fog, painted as an overlay
+          const dark = Math.max(0, 1 - shade * (1 - fog * 0.15));
+          const tint = `rgba(${FOG[0]},${FOG[1]},${FOG[2]},${Math.min(0.97, fog * 0.95 + dark * 0.5)})`;
+          for (let i = 1; i < q.pts.length - 1; i++) drawTexTri(q.pts[0], q.pts[i], q.pts[i + 1], q.p.tex, tint);
+        } else {
+          const c = q.p.c ?? [80, 40, 50];
+          const r = c[0] * shade * (1 - fog) + FOG[0] * fog;
+          const g = c[1] * shade * (1 - fog) + FOG[1] * fog;
+          const b = c[2] * shade * (1 - fog) + FOG[2] * fog;
+          ctx.fillStyle = `rgb(${r | 0},${g | 0},${b | 0})`;
+          ctx.beginPath();
+          ctx.moveTo(q.pts[0].x, q.pts[0].y);
+          for (let i = 1; i < q.pts.length; i++) ctx.lineTo(q.pts[i].x, q.pts[i].y);
+          ctx.closePath();
+          ctx.fill();
+        }
       }
     }
 
-    // ---- characters as low-poly boxes -------------------------------------
-    function charPolys(px: number, pz: number, yaw: number, bob: number, out: Poly[]) {
-      const c = Math.cos(yaw),
-        s = Math.sin(yaw);
-      const put = (
-        lx: number,
-        y0: number,
-        y1: number,
-        lz: number,
-        w: number,
-        d: number,
-        col: [number, number, number],
-      ) => {
-        const corners = [
-          [-w / 2, -d / 2],
-          [w / 2, -d / 2],
-          [w / 2, d / 2],
-          [-w / 2, d / 2],
-        ].map(([ox, oz]) => {
-          const X = lx + ox,
-            Z = lz + oz;
-          return { x: px + X * c - Z * s, z: pz + X * s + Z * c };
-        });
-        const top: [number, number, number] = [col[0] * 1.3, col[1] * 1.3, col[2] * 1.3];
-        out.push({
-          v: corners.map((p) => ({ x: p.x, y: y1 + bob, z: p.z })),
-          c: top,
-        });
-        for (let i = 0; i < 4; i++) {
-          const a = corners[i],
-            b = corners[(i + 1) % 4];
-          const shade = i % 2 ? 0.72 : 1;
-          out.push({
-            v: [
-              { x: a.x, y: y0 + bob, z: a.z },
-              { x: a.x, y: y1 + bob, z: a.z },
-              { x: b.x, y: y1 + bob, z: b.z },
-              { x: b.x, y: y0 + bob, z: b.z },
-            ],
-            c: [col[0] * shade, col[1] * shade, col[2] * shade],
-          });
-        }
-      };
-      // legs
-      put(-0.16, 0, 0.75, 0, 0.22, 0.24, [42, 30, 34]);
-      put(0.16, 0, 0.75, 0, 0.2, 0.22, [70, 70, 78]); // hydraulic peg leg
-      // torso / heavy suit
-      put(0, 0.72, 1.5, 0, 0.62, 0.42, [64, 40, 46]);
-      // backpack
-      put(0, 0.95, 1.45, -0.3, 0.5, 0.26, [40, 26, 32]);
-      // pauldrons
-      put(-0.38, 1.15, 1.45, 0, 0.2, 0.34, [84, 52, 40]);
-      put(0.38, 1.15, 1.45, 0, 0.2, 0.34, [84, 52, 40]);
-      // helmet
-      put(0, 1.5, 1.85, 0, 0.36, 0.36, [92, 60, 44]);
-    }
-
+    // ---- the Husk (low-poly body, textured) --------------------------------
     function huskPolys(out: Poly[], time: number) {
-      const bob = Math.sin(time * 0.6) * 0.06;
-      const px = 0,
-        pz = CORRIDOR_LEN - 3;
-      const put = (
-        lx: number,
-        y0: number,
-        y1: number,
-        lz: number,
-        w: number,
-        d: number,
-        col: [number, number, number],
-      ) => {
-        const corners = [
-          [-w / 2, -d / 2],
-          [w / 2, -d / 2],
-          [w / 2, d / 2],
-          [-w / 2, d / 2],
-        ].map(([ox, oz]) => ({ x: px + lx + ox, z: pz + lz + oz }));
-        out.push({ v: corners.map((p) => ({ x: p.x, y: y1 + bob, z: p.z })), c: [col[0] * 1.25, col[1] * 1.25, col[2] * 1.25] });
-        for (let i = 0; i < 4; i++) {
-          const a = corners[i],
-            b = corners[(i + 1) % 4];
-          const shade = i % 2 ? 0.7 : 1;
-          out.push({
-            v: [
-              { x: a.x, y: y0 + bob, z: a.z },
-              { x: a.x, y: y1 + bob, z: a.z },
-              { x: b.x, y: y1 + bob, z: b.z },
-              { x: b.x, y: y0 + bob, z: b.z },
-            ],
-            c: [col[0] * shade, col[1] * shade, col[2] * shade],
-          });
-        }
-      };
-      // hovering corpse, torso + ruptured chest + broken-wing arm + helmet
-      put(0, 1.0, 1.9, 0, 0.55, 0.35, [46, 34, 40]);
-      put(0, 1.3, 1.55, 0.19, 0.28, 0.05, [150, 26, 44]);
-      put(-0.55, 1.55, 1.7, 0.05, 0.7, 0.16, [52, 34, 42]); // limp arm, wing-like
-      put(-0.9, 1.15, 1.6, 0.05, 0.14, 0.14, [40, 26, 32]);
-      put(0.42, 1.2, 1.7, 0, 0.16, 0.2, [52, 34, 42]);
-      put(0, 1.9, 2.25, 0, 0.34, 0.34, [70, 34, 36]);
-      // blood pool
+      const bob = Math.sin(time * 0.6) * 0.05;
+      const pz = CORRIDOR_LEN - 3.5;
+      boxInto(out, 0, 1.0 + bob, pz, 0.55, 0.9, 0.32, texSuit); // torso
+      boxInto(out, 0, 1.3 + bob, pz + 0.16, 0.28, 0.28, 0.04, texMeat); // ruptured chest
+      boxInto(out, -0.6, 1.6 + bob, pz + 0.05, 0.75, 0.14, 0.14, texSuit); // broken-wing arm
+      boxInto(out, -0.95, 1.25 + bob, pz + 0.05, 0.12, 0.4, 0.12, texMeat); // dangling forearm
+      boxInto(out, 0.42, 1.25 + bob, pz, 0.14, 0.5, 0.18, texSuit);
+      boxInto(out, 0, 1.9 + bob, pz, 0.34, 0.34, 0.34, texCrate); // helmet
       out.push({
         v: [
-          { x: -0.9, y: 0.01, z: pz - 0.9 },
-          { x: 0.9, y: 0.01, z: pz - 0.9 },
-          { x: 0.9, y: 0.01, z: pz + 0.9 },
-          { x: -0.9, y: 0.01, z: pz + 0.9 },
+          { x: -1, y: 0.02, z: pz - 1, u: 0, w: 0 },
+          { x: 1, y: 0.02, z: pz - 1, u: 1, w: 0 },
+          { x: 1, y: 0.02, z: pz + 1, u: 1, w: 1 },
+          { x: -1, y: 0.02, z: pz + 1, u: 0, w: 1 },
         ],
-        c: [70, 12, 22],
+        tex: texMeat,
+        shade: 0.7,
       });
     }
 
-    // floating blood droplets (screen-space dots projected from 3D)
-    const drops = Array.from({ length: 26 }, () => ({
-      x: (rnd() - 0.5) * 1.4,
-      y: rnd() * 2,
-      z: CORRIDOR_LEN - 3 + (rnd() - 0.5) * 1.2,
+    const drops = Array.from({ length: 30 }, () => ({
+      x: (rnd() - 0.5) * 1.6,
+      y: rnd() * 2.2,
+      z: CORRIDOR_LEN - 3.5 + (rnd() - 0.5) * 1.4,
       v: 0.08 + rnd() * 0.2,
     }));
 
@@ -315,6 +390,8 @@ export default function DiveScene({ onReach }: Props) {
     let last = performance.now();
     let time = 0;
     let stepTimer = 0;
+    let stepFlip = 0;
+    let walkPhase = 0;
 
     function update(dt: number) {
       time += dt;
@@ -328,42 +405,35 @@ export default function DiveScene({ onReach }: Props) {
       if (keys.has("q")) strafe -= 1;
       if (keys.has("e")) strafe += 1;
 
-      player.yaw += turn * 1.8 * dt;
-      const sp = 3.0;
-      player.z += Math.cos(player.yaw) * fwd * sp * dt + Math.sin(player.yaw) * strafe * sp * 0.6 * dt;
-      player.x += Math.sin(player.yaw) * fwd * sp * dt - Math.cos(player.yaw) * strafe * sp * 0.6 * dt;
-      player.x = Math.max(-HALF_W + 0.6, Math.min(HALF_W - 0.6, player.x));
-      player.z = Math.max(0.6, Math.min(CORRIDOR_LEN - 1.2, player.z));
-
-      // camera trails behind player (Tomb Raider style chase cam)
-      const tx = player.x - Math.sin(player.yaw) * 4.4;
-      const tz = player.z - Math.cos(player.yaw) * 4.4;
-      const k = Math.min(1, dt * 4.5);
-      cam.x += (tx - cam.x) * k;
-      cam.z += (tz - cam.z) * k;
-      let dy = player.yaw - cam.yaw;
-      while (dy > Math.PI) dy -= Math.PI * 2;
-      while (dy < -Math.PI) dy += Math.PI * 2;
-      cam.yaw += dy * Math.min(1, dt * 5);
-      cam.y += (2.35 - cam.y) * k;
+      cam.yaw += turn * 1.7 * dt;
+      const sp = 2.7;
+      cam.z += Math.cos(cam.yaw) * fwd * sp * dt + Math.sin(cam.yaw) * strafe * sp * 0.7 * dt;
+      cam.x += Math.sin(cam.yaw) * fwd * sp * dt - Math.cos(cam.yaw) * strafe * sp * 0.7 * dt;
+      cam.x = Math.max(-HALF_W + 0.5, Math.min(HALF_W - 0.5, cam.x));
+      cam.z = Math.max(0.7, Math.min(CORRIDOR_LEN - 1.6, cam.z));
 
       const moving = fwd !== 0 || strafe !== 0;
       if (moving) {
+        walkPhase += dt * 5.4;
+        cam.bob = Math.sin(walkPhase) * 0.045;
         stepTimer += dt;
-        const interval = player.step === 0 ? 0.4 : 0.62;
+        const interval = stepFlip === 0 ? 0.4 : 0.62;
         if (stepTimer > interval) {
           stepTimer = 0;
-          player.step = (player.step + 1) % 2;
-          clang(player.step === 0 ? "step" : "hydraulic");
+          stepFlip = (stepFlip + 1) % 2;
+          clang(stepFlip === 0 ? "step" : "hydraulic");
         }
-      } else stepTimer = 0.28;
+      } else {
+        cam.bob += (0 - cam.bob) * Math.min(1, dt * 5);
+        stepTimer = 0.28;
+      }
 
       for (const d of drops) {
         d.y += d.v * dt;
         if (d.y > 2.4) d.y = 0.1;
       }
 
-      if (player.z > CORRIDOR_LEN - 6 && !reachedRef.current) {
+      if (cam.z > CORRIDOR_LEN - 7 && !reachedRef.current) {
         reachedRef.current = true;
         onReach();
       }
@@ -376,21 +446,18 @@ export default function DiveScene({ onReach }: Props) {
 
       const dyn: Poly[] = [];
       huskPolys(dyn, time);
-      const bob = Math.sin(time * 8) * 0.02 * (keys.size ? 1 : 0);
-      charPolys(player.x, player.z, player.yaw, bob, dyn);
       drawPolys([...level, ...dyn]);
 
-      // lamp glows
       for (const l of lamps) {
-        const p = toCam({ x: l.x, y: l.y, z: l.z });
+        const p = toCam(l);
         if (p.z < 0.4) continue;
         const s = proj(p);
         const flick = 0.6 + 0.4 * Math.sin(time * 9 + l.phase);
         const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
-        const r = (260 / p.z) * (1 - fog);
+        const r = (240 / p.z) * (1 - fog);
         if (r < 1) continue;
         const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
-        g.addColorStop(0, `rgba(255,90,80,${0.5 * flick * (1 - fog)})`);
+        g.addColorStop(0, `rgba(255,95,80,${0.45 * flick * (1 - fog)})`);
         g.addColorStop(1, "rgba(255,60,60,0)");
         ctx.fillStyle = g;
         ctx.beginPath();
@@ -398,33 +465,46 @@ export default function DiveScene({ onReach }: Props) {
         ctx.fill();
       }
 
-      // floating blood droplets near the husk
       for (const d of drops) {
         const p = toCam(d);
         if (p.z < 0.5) continue;
         const s = proj(p);
-        const size = Math.max(1, (6 / p.z) * 1.5);
+        const size = Math.max(1, (7 / p.z) * 1.4);
         const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
-        ctx.fillStyle = `rgba(170,26,44,${0.8 * (1 - fog)})`;
+        ctx.fillStyle = `rgba(175,28,46,${0.85 * (1 - fog)})`;
         ctx.fillRect(s.x, s.y, size, size);
       }
 
-      // volumetric mist bands
-      const mg = ctx.createLinearGradient(0, H * 0.25, 0, H);
-      mg.addColorStop(0, "rgba(40,22,30,0.45)");
-      mg.addColorStop(0.5, "rgba(28,15,22,0.22)");
-      mg.addColorStop(1, "rgba(18,10,14,0.35)");
+      // helmet lamp pool straight ahead
+      const lamp = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, H * 0.9);
+      lamp.addColorStop(0, "rgba(255,225,190,0.13)");
+      lamp.addColorStop(0.45, "rgba(210,120,95,0.05)");
+      lamp.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = lamp;
+      ctx.fillRect(0, 0, W, H);
+
+      const mg = ctx.createLinearGradient(0, H * 0.2, 0, H);
+      mg.addColorStop(0, "rgba(40,22,30,0.35)");
+      mg.addColorStop(0.55, "rgba(28,15,22,0.18)");
+      mg.addColorStop(1, "rgba(18,10,14,0.32)");
       ctx.fillStyle = mg;
       ctx.fillRect(0, 0, W, H);
 
-      // vignette
-      const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95);
+      const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.32, W / 2, H / 2, H * 0.95);
       vg.addColorStop(0, "rgba(0,0,0,0)");
-      vg.addColorStop(1, "rgba(0,0,0,0.7)");
+      vg.addColorStop(1, "rgba(0,0,0,0.72)");
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
-      if (!reachedRef.current && CORRIDOR_LEN - player.z < 12) {
+      // faint visor frame so we read as first-person inside the heavy suit
+      ctx.fillStyle = "rgba(10,6,8,0.85)";
+      ctx.fillRect(0, 0, W, 6);
+      ctx.fillRect(0, H - 8, W, 8);
+      ctx.strokeStyle = "rgba(190,120,110,0.15)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(6, 10, W - 12, H - 24);
+
+      if (!reachedRef.current && CORRIDOR_LEN - cam.z < 13) {
         ctx.fillStyle = "rgba(225,205,205,0.85)";
         ctx.font = "10px monospace";
         ctx.textAlign = "center";
@@ -445,6 +525,9 @@ export default function DiveScene({ onReach }: Props) {
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
+      window.removeEventListener("mousemove", onMouse);
+      canvas.removeEventListener("click", onClick);
+      if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     };
   }, [onReach]);
 
@@ -460,6 +543,7 @@ export default function DiveScene({ onReach }: Props) {
         display: "block",
         margin: "0 auto",
         background: "#000",
+        cursor: "crosshair",
       }}
     />
   );
