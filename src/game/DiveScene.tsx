@@ -1,20 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clang } from "./audio";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
-// Affine-mapped textured triangles, chunky low-res buffer, heavy distance fog,
-// wobbling vertex snap. You walk the flooded maintenance corridor of Gamma-7.
+// The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
+// suspended silt, and things drifting in the dark that used to be people.
 type Props = { onReach: () => void };
 
 const W = 480;
 const H = 270;
 const FOCAL = 300;
-const CORRIDOR_LEN = 60;
+const CORRIDOR_LEN = 96;
 const HALF_W = 2.6;
 const CEIL = 3.2;
-const FOG_NEAR = 5;
-const FOG_FAR = 30;
-const FOG = [24, 13, 17] as const;
+const FOG_NEAR = 3;
+const FOG_FAR = 20;
+const FOG = [10, 12, 16] as const;
 
 type V3 = { x: number; y: number; z: number; u?: number; w?: number };
 type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
@@ -22,6 +22,8 @@ type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; sh
 export default function DiveScene({ onReach }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reachedRef = useRef(false);
+  const [log, setLog] = useState<{ line: string; sub: string } | null>(null);
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
