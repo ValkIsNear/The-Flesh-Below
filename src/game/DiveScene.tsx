@@ -1,20 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clang } from "./audio";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
-// Affine-mapped textured triangles, chunky low-res buffer, heavy distance fog,
-// wobbling vertex snap. You walk the flooded maintenance corridor of Gamma-7.
+// The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
+// suspended silt, and things drifting in the dark that used to be people.
 type Props = { onReach: () => void };
 
 const W = 480;
 const H = 270;
 const FOCAL = 300;
-const CORRIDOR_LEN = 60;
+const CORRIDOR_LEN = 96;
 const HALF_W = 2.6;
 const CEIL = 3.2;
-const FOG_NEAR = 5;
-const FOG_FAR = 30;
-const FOG = [24, 13, 17] as const;
+const FOG_NEAR = 3;
+const FOG_FAR = 20;
+const FOG = [10, 12, 16] as const;
 
 type V3 = { x: number; y: number; z: number; u?: number; w?: number };
 type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
@@ -22,6 +22,8 @@ type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; sh
 export default function DiveScene({ onReach }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reachedRef = useRef(false);
+  const [log, setLog] = useState<{ line: string; sub: string } | null>(null);
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -231,6 +233,75 @@ export default function DiveScene({ onReach }: Props) {
       lamps.push({ x: (rnd() > 0.5 ? -1 : 1) * (HALF_W - 0.12), y: 2.5, z, phase: rnd() * 6.28 });
     }
 
+    // ---- drifting remains --------------------------------------------------
+    type Body = {
+      x: number;
+      y: number;
+      z: number;
+      kind: "arm" | "leg" | "torso";
+      phase: number;
+      seen: boolean;
+      line: string;
+      sub: string;
+    };
+    const bodies: Body[] = [
+      {
+        x: -1.15,
+        y: 1.25,
+        z: 12,
+        kind: "arm",
+        phase: 0.4,
+        seen: false,
+        line: "Jebote—",
+        sub: "An arm. Just an arm, hanging in the water like it forgot the rest of her.",
+      },
+      {
+        x: 1.3,
+        y: 0.9,
+        z: 26,
+        kind: "leg",
+        phase: 2.1,
+        seen: false,
+        line: "Ne gledaj.",
+        sub: "The suit boot is still sealed. Whatever was inside left through the seams.",
+      },
+      {
+        x: -0.5,
+        y: 1.5,
+        z: 44,
+        kind: "torso",
+        phase: 4.4,
+        seen: false,
+        line: "Nije ona.",
+        sub: "You check the collar tag anyway. You always check. It is never her.",
+      },
+    ];
+    function bodyPolys(out: Poly[], b: Body, t: number) {
+      const yy = b.y + Math.sin(t * 0.5 + b.phase) * 0.09;
+      const sway = Math.sin(t * 0.33 + b.phase) * 0.06;
+      if (b.kind === "arm") {
+        boxInto(out, b.x + sway, yy, b.z, 0.6, 0.13, 0.13, texSuit);
+        boxInto(out, b.x + sway + 0.34, yy - 0.28, b.z + 0.02, 0.11, 0.34, 0.11, texMeat);
+        boxInto(out, b.x + sway - 0.32, yy - 0.02, b.z, 0.14, 0.16, 0.14, texMeat);
+      } else if (b.kind === "leg") {
+        boxInto(out, b.x + sway, yy, b.z, 0.16, 0.7, 0.16, texSuit);
+        boxInto(out, b.x + sway, yy - 0.16, b.z + 0.1, 0.22, 0.14, 0.3, texCrate);
+        boxInto(out, b.x + sway, yy + 0.68, b.z, 0.19, 0.12, 0.19, texMeat);
+      } else {
+        boxInto(out, b.x + sway, yy, b.z, 0.5, 0.62, 0.3, texSuit);
+        boxInto(out, b.x + sway, yy + 0.24, b.z + 0.15, 0.26, 0.26, 0.05, texMeat);
+        boxInto(out, b.x + sway - 0.4, yy + 0.3, b.z, 0.36, 0.12, 0.12, texMeat);
+      }
+    }
+    const silt = Array.from({ length: 90 }, () => ({
+      x: (rnd() - 0.5) * 5,
+      y: rnd() * CEIL,
+      z: rnd() * CORRIDOR_LEN,
+      v: 0.05 + rnd() * 0.12,
+      s: 0.6 + rnd() * 0.9,
+    }));
+
+
     // ---- camera / input ---------------------------------------------------
     const cam = { x: 0, y: 1.62, z: 1.5, yaw: 0, bob: 0 };
     const keys = new Set<string>();
@@ -393,6 +464,9 @@ export default function DiveScene({ onReach }: Props) {
     let stepTimer = 0;
     let stepFlip = 0;
     let walkPhase = 0;
+    let focusT = 0; // seconds left of the forced look
+    let focusYaw = 0;
+    let logTimer = 0;
 
     function update(dt: number) {
       time += dt;
@@ -405,6 +479,17 @@ export default function DiveScene({ onReach }: Props) {
       if (keys.has("arrowright") || keys.has("d")) turn += 1;
       if (keys.has("q")) strafe -= 1;
       if (keys.has("e")) strafe += 1;
+
+      if (focusT > 0) {
+        focusT -= dt;
+        fwd = 0;
+        turn = 0;
+        strafe = 0;
+        let d = focusYaw - cam.yaw;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        cam.yaw += d * Math.min(1, dt * 5);
+      }
 
       cam.yaw += turn * 1.7 * dt;
       const sp = 2.7;
@@ -429,9 +514,36 @@ export default function DiveScene({ onReach }: Props) {
         stepTimer = 0.28;
       }
 
+      // bump into the remains
+      for (const b of bodies) {
+        if (b.seen) continue;
+        const dx = b.x - cam.x;
+        const dz = b.z - cam.z;
+        if (dx * dx + dz * dz < 2.6 * 2.6) {
+          b.seen = true;
+          focusYaw = Math.atan2(dx, dz);
+          focusT = 1.6;
+          logTimer = 6;
+          setLog({ line: b.line, sub: b.sub });
+          clang("hydraulic");
+        }
+      }
+      if (logTimer > 0) {
+        logTimer -= dt;
+        if (logTimer <= 0) setLog(null);
+      }
+
       for (const d of drops) {
         d.y += d.v * dt;
         if (d.y > 2.4) d.y = 0.1;
+      }
+      for (const s of silt) {
+        s.y += s.v * dt;
+        s.x += Math.sin(time * 0.2 + s.z) * 0.04 * dt;
+        if (s.y > CEIL) {
+          s.y = 0.05;
+          s.z = cam.z + (rnd() - 0.2) * 30;
+        }
       }
 
       if (cam.z > CORRIDOR_LEN - 7 && !reachedRef.current) {
@@ -439,6 +551,7 @@ export default function DiveScene({ onReach }: Props) {
         onReach();
       }
     }
+
 
     function render() {
       if (!ctx) return;
