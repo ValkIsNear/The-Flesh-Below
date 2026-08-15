@@ -50,7 +50,8 @@ export default function DiveScene({ onReach }: Props) {
       for (let i = 0; i < 900; i++) {
         const x = Math.floor(rnd() * 64);
         const y = Math.floor(rnd() * 64);
-        c.fillStyle = `rgba(${rnd() > 0.5 ? 255 : 0},${rnd() > 0.6 ? 200 : 0},${rnd() > 0.7 ? 180 : 0},${rnd() * amt})`;
+        const g = 120 + rnd() * 90;
+        c.fillStyle = `rgba(${g},${g * 0.72},${g * 0.6},${rnd() * amt * 0.45})`;
         c.fillRect(x, y, 1 + (rnd() > 0.85 ? 1 : 0), 1);
       }
     };
