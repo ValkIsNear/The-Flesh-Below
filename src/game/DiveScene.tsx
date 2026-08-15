@@ -233,6 +233,75 @@ export default function DiveScene({ onReach }: Props) {
       lamps.push({ x: (rnd() > 0.5 ? -1 : 1) * (HALF_W - 0.12), y: 2.5, z, phase: rnd() * 6.28 });
     }
 
+    // ---- drifting remains --------------------------------------------------
+    type Body = {
+      x: number;
+      y: number;
+      z: number;
+      kind: "arm" | "leg" | "torso";
+      phase: number;
+      seen: boolean;
+      line: string;
+      sub: string;
+    };
+    const bodies: Body[] = [
+      {
+        x: -1.15,
+        y: 1.25,
+        z: 12,
+        kind: "arm",
+        phase: 0.4,
+        seen: false,
+        line: "Jebote—",
+        sub: "An arm. Just an arm, hanging in the water like it forgot the rest of her.",
+      },
+      {
+        x: 1.3,
+        y: 0.9,
+        z: 26,
+        kind: "leg",
+        phase: 2.1,
+        seen: false,
+        line: "Ne gledaj.",
+        sub: "The suit boot is still sealed. Whatever was inside left through the seams.",
+      },
+      {
+        x: -0.5,
+        y: 1.5,
+        z: 44,
+        kind: "torso",
+        phase: 4.4,
+        seen: false,
+        line: "Nije ona.",
+        sub: "You check the collar tag anyway. You always check. It is never her.",
+      },
+    ];
+    function bodyPolys(out: Poly[], b: Body, t: number) {
+      const yy = b.y + Math.sin(t * 0.5 + b.phase) * 0.09;
+      const sway = Math.sin(t * 0.33 + b.phase) * 0.06;
+      if (b.kind === "arm") {
+        boxInto(out, b.x + sway, yy, b.z, 0.6, 0.13, 0.13, texSuit);
+        boxInto(out, b.x + sway + 0.34, yy - 0.28, b.z + 0.02, 0.11, 0.34, 0.11, texMeat);
+        boxInto(out, b.x + sway - 0.32, yy - 0.02, b.z, 0.14, 0.16, 0.14, texMeat);
+      } else if (b.kind === "leg") {
+        boxInto(out, b.x + sway, yy, b.z, 0.16, 0.7, 0.16, texSuit);
+        boxInto(out, b.x + sway, yy - 0.16, b.z + 0.1, 0.22, 0.14, 0.3, texCrate);
+        boxInto(out, b.x + sway, yy + 0.68, b.z, 0.19, 0.12, 0.19, texMeat);
+      } else {
+        boxInto(out, b.x + sway, yy, b.z, 0.5, 0.62, 0.3, texSuit);
+        boxInto(out, b.x + sway, yy + 0.24, b.z + 0.15, 0.26, 0.26, 0.05, texMeat);
+        boxInto(out, b.x + sway - 0.4, yy + 0.3, b.z, 0.36, 0.12, 0.12, texMeat);
+      }
+    }
+    const silt = Array.from({ length: 90 }, () => ({
+      x: (rnd() - 0.5) * 5,
+      y: rnd() * CEIL,
+      z: rnd() * CORRIDOR_LEN,
+      v: 0.05 + rnd() * 0.12,
+      s: 0.6 + rnd() * 0.9,
+    }));
+
+
     // ---- camera / input ---------------------------------------------------
     const cam = { x: 0, y: 1.62, z: 1.5, yaw: 0, bob: 0 };
     const keys = new Set<string>();
