@@ -464,6 +464,9 @@ export default function DiveScene({ onReach }: Props) {
     let stepTimer = 0;
     let stepFlip = 0;
     let walkPhase = 0;
+    let focusT = 0; // seconds left of the forced look
+    let focusYaw = 0;
+    let logTimer = 0;
 
     function update(dt: number) {
       time += dt;
@@ -476,6 +479,17 @@ export default function DiveScene({ onReach }: Props) {
       if (keys.has("arrowright") || keys.has("d")) turn += 1;
       if (keys.has("q")) strafe -= 1;
       if (keys.has("e")) strafe += 1;
+
+      if (focusT > 0) {
+        focusT -= dt;
+        fwd = 0;
+        turn = 0;
+        strafe = 0;
+        let d = focusYaw - cam.yaw;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        cam.yaw += d * Math.min(1, dt * 5);
+      }
 
       cam.yaw += turn * 1.7 * dt;
       const sp = 2.7;
@@ -500,9 +514,36 @@ export default function DiveScene({ onReach }: Props) {
         stepTimer = 0.28;
       }
 
+      // bump into the remains
+      for (const b of bodies) {
+        if (b.seen) continue;
+        const dx = b.x - cam.x;
+        const dz = b.z - cam.z;
+        if (dx * dx + dz * dz < 2.6 * 2.6) {
+          b.seen = true;
+          focusYaw = Math.atan2(dx, dz);
+          focusT = 1.6;
+          logTimer = 6;
+          setLog({ line: b.line, sub: b.sub });
+          clang("hydraulic");
+        }
+      }
+      if (logTimer > 0) {
+        logTimer -= dt;
+        if (logTimer <= 0) setLog(null);
+      }
+
       for (const d of drops) {
         d.y += d.v * dt;
         if (d.y > 2.4) d.y = 0.1;
+      }
+      for (const s of silt) {
+        s.y += s.v * dt;
+        s.x += Math.sin(time * 0.2 + s.z) * 0.04 * dt;
+        if (s.y > CEIL) {
+          s.y = 0.05;
+          s.z = cam.z + (rnd() - 0.2) * 30;
+        }
       }
 
       if (cam.z > CORRIDOR_LEN - 7 && !reachedRef.current) {
@@ -510,6 +551,7 @@ export default function DiveScene({ onReach }: Props) {
         onReach();
       }
     }
+
 
     function render() {
       if (!ctx) return;
