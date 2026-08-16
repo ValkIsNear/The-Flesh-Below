@@ -588,7 +588,37 @@ export default function DiveScene({ onReach }: Props) {
 
       const dyn: Poly[] = [];
       huskPolys(dyn, time);
+      for (const b of bodies) bodyPolys(dyn, b, time);
       drawPolys([...level, ...dyn]);
+
+      // suspended blood around the remains
+      for (const g of gore) {
+        const drift = Math.sin(time * 0.4 + g.ph) * 0.12;
+        const p = toCam({
+          x: g.b.x + g.ox + drift,
+          y: g.b.y + g.oy + ((time * g.v) % 1.2) - 0.4,
+          z: g.b.z + g.oz,
+        });
+        if (p.z < 0.5) continue;
+        const s = proj(p);
+        const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
+        if (fog >= 1) continue;
+        const size = Math.max(1, (7 / p.z) * g.s);
+        ctx.fillStyle = `rgba(150,20,34,${0.55 * (1 - fog)})`;
+        ctx.fillRect(s.x, s.y, size, size);
+      }
+
+      // suspended silt — the water itself
+      for (const sp of silt) {
+        const p = toCam(sp);
+        if (p.z < 0.5) continue;
+        const s = proj(p);
+        const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
+        if (fog >= 1) continue;
+        const size = Math.max(1, (5 / p.z) * sp.s);
+        ctx.fillStyle = `rgba(150,170,180,${0.18 * (1 - fog)})`;
+        ctx.fillRect(s.x, s.y, size, size);
+      }
 
       for (const l of lamps) {
         const p = toCam(l);
