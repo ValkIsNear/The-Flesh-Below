@@ -545,11 +545,13 @@ export default function DiveScene({ onReach }: Props) {
         if (b.seen) continue;
         const dx = b.x - cam.x;
         const dz = b.z - cam.z;
-        if (dx * dx + dz * dz < 2.6 * 2.6) {
+        if (dx * dx + dz * dz < 2.4 * 2.4) {
           b.seen = true;
+          returnYaw = cam.yaw;
           focusYaw = Math.atan2(dx, dz);
-          focusT = 1.6;
-          logTimer = 6;
+          focusT = 2.2;
+          returnT = 0;
+          logTimer = 8;
           setLog({ line: b.line, sub: b.sub });
           clang("hydraulic");
         }
