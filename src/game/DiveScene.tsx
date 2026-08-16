@@ -246,34 +246,34 @@ export default function DiveScene({ onReach }: Props) {
     };
     const bodies: Body[] = [
       {
-        x: -1.15,
+        x: -1.4,
         y: 1.25,
-        z: 12,
+        z: 17,
         kind: "arm",
         phase: 0.4,
         seen: false,
         line: "Jebote—",
-        sub: "An arm. Just an arm, hanging in the water like it forgot the rest of her.",
+        sub: "An arm, snapped open like a broken wing. The elbow bends the wrong way, patient and slow, and a red thread of her keeps unwinding into the water.",
       },
       {
-        x: 1.3,
+        x: 1.45,
         y: 0.9,
-        z: 26,
+        z: 41,
         kind: "leg",
         phase: 2.1,
         seen: false,
         line: "Ne gledaj.",
-        sub: "The suit boot is still sealed. Whatever was inside left through the seams.",
+        sub: "The boot is still sealed. The knee is folded at an angle a knee cannot hold, and the clouds leaking out of the seam are almost pretty in the lamp.",
       },
       {
-        x: -0.5,
+        x: -1.25,
         y: 1.5,
-        z: 44,
+        z: 68,
         kind: "torso",
         phase: 4.4,
         seen: false,
         line: "Nije ona.",
-        sub: "You check the collar tag anyway. You always check. It is never her.",
+        sub: "A torso turning on its own axis, chest opened toward you like a question. You check the collar tag anyway. You always check. It is never her.",
       },
     ];
     function bodyPolys(out: Poly[], b: Body, t: number) {
@@ -293,6 +293,18 @@ export default function DiveScene({ onReach }: Props) {
         boxInto(out, b.x + sway - 0.4, yy + 0.3, b.z, 0.36, 0.12, 0.12, texMeat);
       }
     }
+    // blood suspended around each body — slow, weightless, sickening
+    const gore = bodies.flatMap((b) =>
+      Array.from({ length: 26 }, () => ({
+        b,
+        ox: (rnd() - 0.5) * 1.1,
+        oy: (rnd() - 0.5) * 1.0,
+        oz: (rnd() - 0.5) * 1.1,
+        v: 0.02 + rnd() * 0.06,
+        ph: rnd() * 6.28,
+        s: 0.7 + rnd() * 1.5,
+      })),
+    );
     const silt = Array.from({ length: 90 }, () => ({
       x: (rnd() - 0.5) * 5,
       y: rnd() * CEIL,
@@ -300,6 +312,7 @@ export default function DiveScene({ onReach }: Props) {
       v: 0.05 + rnd() * 0.12,
       s: 0.6 + rnd() * 0.9,
     }));
+
 
 
     // ---- camera / input ---------------------------------------------------
@@ -466,6 +479,8 @@ export default function DiveScene({ onReach }: Props) {
     let walkPhase = 0;
     let focusT = 0; // seconds left of the forced look
     let focusYaw = 0;
+    let returnYaw = 0; // where the camera was before the forced look
+    let returnT = 0; // seconds left of easing back
     let logTimer = 0;
 
     function update(dt: number) {
@@ -489,6 +504,17 @@ export default function DiveScene({ onReach }: Props) {
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
         cam.yaw += d * Math.min(1, dt * 5);
+        if (focusT <= 0) returnT = 1.1;
+      } else if (returnT > 0) {
+        returnT -= dt;
+        fwd = 0;
+        turn = 0;
+        strafe = 0;
+        let d = returnYaw - cam.yaw;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        cam.yaw += d * Math.min(1, dt * 4);
+        if (returnT <= 0) cam.yaw = returnYaw;
       }
 
       cam.yaw += turn * 1.7 * dt;
@@ -519,11 +545,13 @@ export default function DiveScene({ onReach }: Props) {
         if (b.seen) continue;
         const dx = b.x - cam.x;
         const dz = b.z - cam.z;
-        if (dx * dx + dz * dz < 2.6 * 2.6) {
+        if (dx * dx + dz * dz < 2.4 * 2.4) {
           b.seen = true;
+          returnYaw = cam.yaw;
           focusYaw = Math.atan2(dx, dz);
-          focusT = 1.6;
-          logTimer = 6;
+          focusT = 2.2;
+          returnT = 0;
+          logTimer = 8;
           setLog({ line: b.line, sub: b.sub });
           clang("hydraulic");
         }
@@ -560,7 +588,37 @@ export default function DiveScene({ onReach }: Props) {
 
       const dyn: Poly[] = [];
       huskPolys(dyn, time);
+      for (const b of bodies) bodyPolys(dyn, b, time);
       drawPolys([...level, ...dyn]);
+
+      // suspended blood around the remains
+      for (const g of gore) {
+        const drift = Math.sin(time * 0.4 + g.ph) * 0.12;
+        const p = toCam({
+          x: g.b.x + g.ox + drift,
+          y: g.b.y + g.oy + ((time * g.v) % 1.2) - 0.4,
+          z: g.b.z + g.oz,
+        });
+        if (p.z < 0.5) continue;
+        const s = proj(p);
+        const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
+        if (fog >= 1) continue;
+        const size = Math.max(1, (7 / p.z) * g.s);
+        ctx.fillStyle = `rgba(150,20,34,${0.55 * (1 - fog)})`;
+        ctx.fillRect(s.x, s.y, size, size);
+      }
+
+      // suspended silt — the water itself
+      for (const sp of silt) {
+        const p = toCam(sp);
+        if (p.z < 0.5) continue;
+        const s = proj(p);
+        const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
+        if (fog >= 1) continue;
+        const size = Math.max(1, (5 / p.z) * sp.s);
+        ctx.fillStyle = `rgba(150,170,180,${0.18 * (1 - fog)})`;
+        ctx.fillRect(s.x, s.y, size, size);
+      }
 
       for (const l of lamps) {
         const p = toCam(l);
@@ -646,19 +704,43 @@ export default function DiveScene({ onReach }: Props) {
   }, [onReach]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={W}
-      height={H}
-      style={{
-        width: "min(100vw, calc(100vh * 16 / 9))",
-        height: "min(100vh, calc(100vw * 9 / 16))",
-        imageRendering: "pixelated",
-        display: "block",
-        margin: "0 auto",
-        background: "#000",
-        cursor: "crosshair",
-      }}
-    />
+    <div style={{ position: "relative", width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" }}>
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        style={{
+          width: "100%",
+          height: "min(100vh, calc(100vw * 9 / 16))",
+          imageRendering: "pixelated",
+          display: "block",
+          background: "#000",
+          cursor: "crosshair",
+        }}
+      />
+      {log && (
+        <div
+          style={{
+            position: "absolute",
+            right: "3%",
+            top: "22%",
+            width: "32%",
+            padding: "10px 12px",
+            background: "rgba(8,6,9,0.72)",
+            borderLeft: "2px solid rgba(175,28,46,0.75)",
+            color: "rgba(228,214,214,0.92)",
+            fontFamily: "monospace",
+            fontSize: "clamp(9px, 1.05vw, 14px)",
+            lineHeight: 1.5,
+            letterSpacing: "0.02em",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ color: "rgba(220,120,120,0.95)", marginBottom: 6 }}>{log.line}</div>
+          <div style={{ opacity: 0.85 }}>{log.sub}</div>
+        </div>
+      )}
+    </div>
   );
+
 }
