@@ -479,6 +479,8 @@ export default function DiveScene({ onReach }: Props) {
     let walkPhase = 0;
     let focusT = 0; // seconds left of the forced look
     let focusYaw = 0;
+    let returnYaw = 0; // where the camera was before the forced look
+    let returnT = 0; // seconds left of easing back
     let logTimer = 0;
 
     function update(dt: number) {
