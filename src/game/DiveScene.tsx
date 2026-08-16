@@ -12,9 +12,9 @@ const FOCAL = 300;
 const CORRIDOR_LEN = 96;
 const HALF_W = 2.6;
 const CEIL = 3.2;
-const FOG_NEAR = 3;
-const FOG_FAR = 20;
-const FOG = [10, 12, 16] as const;
+const FOG_NEAR = 2;
+const FOG_FAR = 16;
+const FOG = [4, 5, 8] as const;
 
 type V3 = { x: number; y: number; z: number; u?: number; w?: number };
 type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
