@@ -337,7 +337,9 @@ export default function DiveScene({ onReach }: Props) {
       const dz = p.z - cam.z;
       const c = Math.cos(-cam.yaw),
         s = Math.sin(-cam.yaw);
-      return { x: dx * c - dz * s, y: p.y - (cam.y + cam.bob), z: dx * s + dz * c, u: p.u, w: p.w };
+      // negate x: yaw convention is left-handed, otherwise the world mirrors
+      // and forced looks snap to the opposite side of the corridor
+      return { x: -(dx * c - dz * s), y: p.y - (cam.y + cam.bob), z: dx * s + dz * c, u: p.u, w: p.w };
     }
     const NEAR = 0.2;
     function clipNear(v: V3[]): V3[] {
