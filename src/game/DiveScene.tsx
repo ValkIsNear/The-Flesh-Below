@@ -704,19 +704,43 @@ export default function DiveScene({ onReach }: Props) {
   }, [onReach]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={W}
-      height={H}
-      style={{
-        width: "min(100vw, calc(100vh * 16 / 9))",
-        height: "min(100vh, calc(100vw * 9 / 16))",
-        imageRendering: "pixelated",
-        display: "block",
-        margin: "0 auto",
-        background: "#000",
-        cursor: "crosshair",
-      }}
-    />
+    <div style={{ position: "relative", width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" }}>
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        style={{
+          width: "100%",
+          height: "min(100vh, calc(100vw * 9 / 16))",
+          imageRendering: "pixelated",
+          display: "block",
+          background: "#000",
+          cursor: "crosshair",
+        }}
+      />
+      {log && (
+        <div
+          style={{
+            position: "absolute",
+            right: "3%",
+            top: "22%",
+            width: "32%",
+            padding: "10px 12px",
+            background: "rgba(8,6,9,0.72)",
+            borderLeft: "2px solid rgba(175,28,46,0.75)",
+            color: "rgba(228,214,214,0.92)",
+            fontFamily: "monospace",
+            fontSize: "clamp(9px, 1.05vw, 14px)",
+            lineHeight: 1.5,
+            letterSpacing: "0.02em",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ color: "rgba(220,120,120,0.95)", marginBottom: 6 }}>{log.line}</div>
+          <div style={{ opacity: 0.85 }}>{log.sub}</div>
+        </div>
+      )}
+    </div>
   );
+
 }
