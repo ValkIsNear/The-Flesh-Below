@@ -504,6 +504,17 @@ export default function DiveScene({ onReach }: Props) {
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
         cam.yaw += d * Math.min(1, dt * 5);
+        if (focusT <= 0) returnT = 1.1;
+      } else if (returnT > 0) {
+        returnT -= dt;
+        fwd = 0;
+        turn = 0;
+        strafe = 0;
+        let d = returnYaw - cam.yaw;
+        while (d > Math.PI) d -= Math.PI * 2;
+        while (d < -Math.PI) d += Math.PI * 2;
+        cam.yaw += d * Math.min(1, dt * 4);
+        if (returnT <= 0) cam.yaw = returnYaw;
       }
 
       cam.yaw += turn * 1.7 * dt;
