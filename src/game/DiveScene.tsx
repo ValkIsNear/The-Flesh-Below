@@ -246,34 +246,34 @@ export default function DiveScene({ onReach }: Props) {
     };
     const bodies: Body[] = [
       {
-        x: -1.15,
+        x: -1.4,
         y: 1.25,
-        z: 12,
+        z: 17,
         kind: "arm",
         phase: 0.4,
         seen: false,
         line: "Jebote—",
-        sub: "An arm. Just an arm, hanging in the water like it forgot the rest of her.",
+        sub: "An arm, snapped open like a broken wing. The elbow bends the wrong way, patient and slow, and a red thread of her keeps unwinding into the water.",
       },
       {
-        x: 1.3,
+        x: 1.45,
         y: 0.9,
-        z: 26,
+        z: 41,
         kind: "leg",
         phase: 2.1,
         seen: false,
         line: "Ne gledaj.",
-        sub: "The suit boot is still sealed. Whatever was inside left through the seams.",
+        sub: "The boot is still sealed. The knee is folded at an angle a knee cannot hold, and the clouds leaking out of the seam are almost pretty in the lamp.",
       },
       {
-        x: -0.5,
+        x: -1.25,
         y: 1.5,
-        z: 44,
+        z: 68,
         kind: "torso",
         phase: 4.4,
         seen: false,
         line: "Nije ona.",
-        sub: "You check the collar tag anyway. You always check. It is never her.",
+        sub: "A torso turning on its own axis, chest opened toward you like a question. You check the collar tag anyway. You always check. It is never her.",
       },
     ];
     function bodyPolys(out: Poly[], b: Body, t: number) {
@@ -293,6 +293,18 @@ export default function DiveScene({ onReach }: Props) {
         boxInto(out, b.x + sway - 0.4, yy + 0.3, b.z, 0.36, 0.12, 0.12, texMeat);
       }
     }
+    // blood suspended around each body — slow, weightless, sickening
+    const gore = bodies.flatMap((b) =>
+      Array.from({ length: 26 }, () => ({
+        b,
+        ox: (rnd() - 0.5) * 1.1,
+        oy: (rnd() - 0.5) * 1.0,
+        oz: (rnd() - 0.5) * 1.1,
+        v: 0.02 + rnd() * 0.06,
+        ph: rnd() * 6.28,
+        s: 0.7 + rnd() * 1.5,
+      })),
+    );
     const silt = Array.from({ length: 90 }, () => ({
       x: (rnd() - 0.5) * 5,
       y: rnd() * CEIL,
@@ -300,6 +312,7 @@ export default function DiveScene({ onReach }: Props) {
       v: 0.05 + rnd() * 0.12,
       s: 0.6 + rnd() * 0.9,
     }));
+
 
 
     // ---- camera / input ---------------------------------------------------
