@@ -720,8 +720,14 @@ export default function DiveScene({ onReach }: Props) {
         const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
         if (fog >= 1) continue;
         const size = Math.max(1, (7 / p.z) * g.s);
-        ctx.fillStyle = `rgba(150,20,34,${0.55 * (1 - fog)})`;
+        // diluted plume: thin, brownish-red haze the further it drifts
+        const dilute = Math.min(1, g.s / 3.3);
+        const r = 150 - dilute * 40;
+        const gg = 20 + dilute * 40;
+        const bb = 34 + dilute * 34;
+        ctx.fillStyle = `rgba(${r | 0},${gg | 0},${bb | 0},${g.a * (1 - fog)})`;
         ctx.fillRect(s.x, s.y, size, size);
+
       }
 
       // suspended silt — the water itself
