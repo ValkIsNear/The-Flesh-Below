@@ -664,7 +664,9 @@ export default function DiveScene({ onReach }: Props) {
         if (dx * dx + dz * dz < 2.4 * 2.4) {
           b.seen = true;
           returnYaw = cam.yaw;
-          focusYaw = Math.atan2(dx, dz);
+          // The renderer mirrors camera-space X, so the look yaw must use the
+          // opposite horizontal sign to center the actual body on screen.
+          focusYaw = Math.atan2(-dx, dz);
           focusT = 2.2;
           returnT = 0;
           logTimer = 8;
