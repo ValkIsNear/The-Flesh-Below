@@ -276,35 +276,149 @@ export default function DiveScene({ onReach }: Props) {
         sub: "A torso turning on its own axis, chest opened toward you like a question. You check the collar tag anyway. You always check. It is never her.",
       },
     ];
+    // rotated box — lets limbs hang at wrong, sickening angles
+    const boxRot = (
+      out: Poly[],
+      cx: number,
+      cy: number,
+      cz: number,
+      w: number,
+      h: number,
+      d: number,
+      rx: number,
+      ry: number,
+      rz: number,
+      tex: HTMLCanvasElement,
+    ) => {
+      const cxr = Math.cos(rx), sxr = Math.sin(rx);
+      const cyr = Math.cos(ry), syr = Math.sin(ry);
+      const czr = Math.cos(rz), szr = Math.sin(rz);
+      const P = (lx: number, ly: number, lz: number): V3 => {
+        // Z then X then Y
+        let x = lx * czr - ly * szr;
+        let y = lx * szr + ly * czr;
+        let z = lz;
+        const y2 = y * cxr - z * sxr;
+        const z2 = y * sxr + z * cxr;
+        y = y2;
+        z = z2;
+        const x2 = x * cyr + z * syr;
+        const z3 = -x * syr + z * cyr;
+        x = x2;
+        z = z3;
+        return { x: cx + x, y: cy + y, z: cz + z };
+      };
+      const hw = w / 2, hh = h / 2, hd = d / 2;
+      const c = [
+        P(-hw, -hh, -hd), P(hw, -hh, -hd), P(hw, hh, -hd), P(-hw, hh, -hd),
+        P(-hw, -hh, hd), P(hw, -hh, hd), P(hw, hh, hd), P(-hw, hh, hd),
+      ];
+      const f = (a: V3, b: V3, cc: V3, dd: V3, shade: number) =>
+        out.push({
+          v: [
+            { ...a, u: 0, w: 0 },
+            { ...b, u: 1, w: 0 },
+            { ...cc, u: 1, w: 1 },
+            { ...dd, u: 0, w: 1 },
+          ],
+          tex,
+          shade,
+        });
+      f(c[3], c[2], c[6], c[7], 1.25); // top
+      f(c[0], c[3], c[2], c[1], 1); // front
+      f(c[5], c[6], c[7], c[4], 0.85); // back
+      f(c[4], c[7], c[3], c[0], 0.7); // left
+      f(c[1], c[2], c[6], c[5], 0.75); // right
+      f(c[0], c[1], c[5], c[4], 0.6); // bottom
+    };
+
+    // a hand: palm + four fingers + thumb, splayed and half-curled
+    const handInto = (
+      out: Poly[],
+      hx: number,
+      hy: number,
+      hz: number,
+      rx: number,
+      ry: number,
+      rz: number,
+      t: number,
+      ph: number,
+    ) => {
+      boxRot(out, hx, hy, hz, 0.17, 0.05, 0.15, rx, ry, rz, texMeat);
+      for (let i = 0; i < 4; i++) {
+        const spread = (i - 1.5) * 0.045;
+        const curl = 0.5 + Math.sin(t * 0.4 + ph + i) * 0.12 + i * 0.1;
+        const fx = hx + Math.cos(ry) * spread;
+        const fz = hz - Math.sin(ry) * spread;
+        // proximal segment
+        boxRot(out, fx + Math.sin(ry) * 0.09, hy - 0.02, fz + Math.cos(ry) * 0.09, 0.032, 0.032, 0.11, rx, ry, rz, texMeat);
+        // curled tip
+        boxRot(
+          out,
+          fx + Math.sin(ry) * 0.16,
+          hy - 0.02 - Math.sin(curl) * 0.06,
+          fz + Math.cos(ry) * 0.16,
+          0.03,
+          0.03,
+          0.08,
+          rx + curl,
+          ry,
+          rz,
+          texMeat,
+        );
+      }
+      // thumb, bent the wrong way
+      boxRot(out, hx - Math.cos(ry) * 0.1, hy + 0.01, hz + Math.sin(ry) * 0.1, 0.09, 0.035, 0.035, rx, ry - 0.9, rz + 0.5, texMeat);
+    };
+
     function bodyPolys(out: Poly[], b: Body, t: number) {
       const yy = b.y + Math.sin(t * 0.5 + b.phase) * 0.09;
       const sway = Math.sin(t * 0.33 + b.phase) * 0.06;
+      const roll = Math.sin(t * 0.21 + b.phase) * 0.05;
+      const x = b.x + sway;
       if (b.kind === "arm") {
-        boxInto(out, b.x + sway, yy, b.z, 0.6, 0.13, 0.13, texSuit);
-        boxInto(out, b.x + sway + 0.34, yy - 0.28, b.z + 0.02, 0.11, 0.34, 0.11, texMeat);
-        boxInto(out, b.x + sway - 0.32, yy - 0.02, b.z, 0.14, 0.16, 0.14, texMeat);
+        // upper arm, canted down
+        boxRot(out, x, yy, b.z, 0.58, 0.14, 0.14, 0.1, 0.35, -0.55 + roll, texSuit);
+        // forearm hinged the wrong way at the elbow
+        boxRot(out, x + 0.32, yy - 0.3, b.z + 0.06, 0.4, 0.12, 0.12, -0.25, 0.2, 1.25 + roll, texMeat);
+        // torn shoulder stump
+        boxRot(out, x - 0.32, yy + 0.16, b.z, 0.16, 0.18, 0.16, 0.3, 0.5, 0.4, texMeat);
+        handInto(out, x + 0.46, yy - 0.5, b.z + 0.08, 0.6, 0.4 + roll, 1.1, t, b.phase);
       } else if (b.kind === "leg") {
-        boxInto(out, b.x + sway, yy, b.z, 0.16, 0.7, 0.16, texSuit);
-        boxInto(out, b.x + sway, yy - 0.16, b.z + 0.1, 0.22, 0.14, 0.3, texCrate);
-        boxInto(out, b.x + sway, yy + 0.68, b.z, 0.19, 0.12, 0.19, texMeat);
+        // thigh, tilted across the current
+        boxRot(out, x, yy + 0.2, b.z, 0.18, 0.62, 0.18, 0.2, 0.3, 0.42 + roll, texSuit);
+        // shin folded at an impossible knee angle
+        boxRot(out, x + 0.3, yy - 0.22, b.z + 0.05, 0.16, 0.5, 0.16, -0.35, 0.2, -0.85 + roll, texSuit);
+        boxRot(out, x + 0.48, yy - 0.5, b.z + 0.14, 0.22, 0.15, 0.32, -0.4, 0.25, -0.9, texCrate);
+        boxRot(out, x - 0.1, yy + 0.52, b.z, 0.2, 0.14, 0.2, 0.25, 0.3, 0.5, texMeat);
       } else {
-        boxInto(out, b.x + sway, yy, b.z, 0.5, 0.62, 0.3, texSuit);
-        boxInto(out, b.x + sway, yy + 0.24, b.z + 0.15, 0.26, 0.26, 0.05, texMeat);
-        boxInto(out, b.x + sway - 0.4, yy + 0.3, b.z, 0.36, 0.12, 0.12, texMeat);
+        // torso turning on its own axis
+        boxRot(out, x, yy, b.z, 0.5, 0.64, 0.32, 0.28, t * 0.12 + b.phase, 0.35 + roll, texSuit);
+        boxRot(out, x + 0.08, yy + 0.16, b.z + 0.18, 0.28, 0.28, 0.06, 0.28, t * 0.12 + b.phase, 0.35, texMeat);
+        // one arm still attached, wrenched back — with a hand
+        boxRot(out, x - 0.38, yy + 0.24, b.z - 0.04, 0.42, 0.12, 0.12, 0.2, -0.4, 0.9 + roll, texMeat);
+        handInto(out, x - 0.62, yy + 0.06, b.z - 0.1, 0.4, -0.6, 0.8, t, b.phase + 1.7);
+        boxRot(out, x + 0.3, yy - 0.3, b.z, 0.14, 0.3, 0.14, 0.4, 0.3, -0.6, texMeat);
       }
     }
-    // blood suspended around each body — slow, weightless, sickening
+    // blood suspended around the remains — thinned out, dissolving into the water
     const gore = bodies.flatMap((b) =>
-      Array.from({ length: 26 }, () => ({
-        b,
-        ox: (rnd() - 0.5) * 1.1,
-        oy: (rnd() - 0.5) * 1.0,
-        oz: (rnd() - 0.5) * 1.1,
-        v: 0.02 + rnd() * 0.06,
-        ph: rnd() * 6.28,
-        s: 0.7 + rnd() * 1.5,
-      })),
+      Array.from({ length: 64 }, () => {
+        const far = rnd();
+        return {
+          b,
+          ox: (rnd() - 0.5) * (1.1 + far * 2.6),
+          oy: (rnd() - 0.5) * (1.0 + far * 2.0),
+          oz: (rnd() - 0.5) * (1.1 + far * 2.6),
+          v: 0.01 + rnd() * 0.05,
+          ph: rnd() * 6.28,
+          s: 0.7 + rnd() * 2.6,
+          // further from the body = more diluted
+          a: 0.5 * (1 - far * 0.82),
+        };
+      }),
     );
+
     const silt = Array.from({ length: 90 }, () => ({
       x: (rnd() - 0.5) * 5,
       y: rnd() * CEIL,
@@ -606,8 +720,14 @@ export default function DiveScene({ onReach }: Props) {
         const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
         if (fog >= 1) continue;
         const size = Math.max(1, (7 / p.z) * g.s);
-        ctx.fillStyle = `rgba(150,20,34,${0.55 * (1 - fog)})`;
+        // diluted plume: thin, brownish-red haze the further it drifts
+        const dilute = Math.min(1, g.s / 3.3);
+        const r = 150 - dilute * 40;
+        const gg = 20 + dilute * 40;
+        const bb = 34 + dilute * 34;
+        ctx.fillStyle = `rgba(${r | 0},${gg | 0},${bb | 0},${g.a * (1 - fog)})`;
         ctx.fillRect(s.x, s.y, size, size);
+
       }
 
       // suspended silt — the water itself
