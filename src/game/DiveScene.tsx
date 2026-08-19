@@ -375,32 +375,81 @@ export default function DiveScene({ onReach }: Props) {
       const yy = b.y + Math.sin(t * 0.5 + b.phase) * 0.09;
       const sway = Math.sin(t * 0.33 + b.phase) * 0.06;
       const roll = Math.sin(t * 0.21 + b.phase) * 0.05;
+      const turn = t * 0.09 + b.phase;
       const x = b.x + sway;
       if (b.kind === "arm") {
-        // upper arm, canted down
-        boxRot(out, x, yy, b.z, 0.58, 0.14, 0.14, 0.1, 0.35, -0.55 + roll, texSuit);
+        // upper arm, canted down and slowly rotating on its own axis
+        boxRot(out, x, yy, b.z, 0.58, 0.14, 0.14, 0.1 + roll, 0.35 + turn * 0.4, -0.55 + roll, texSuit);
         // forearm hinged the wrong way at the elbow
-        boxRot(out, x + 0.32, yy - 0.3, b.z + 0.06, 0.4, 0.12, 0.12, -0.25, 0.2, 1.25 + roll, texMeat);
-        // torn shoulder stump
-        boxRot(out, x - 0.32, yy + 0.16, b.z, 0.16, 0.18, 0.16, 0.3, 0.5, 0.4, texMeat);
-        handInto(out, x + 0.46, yy - 0.5, b.z + 0.08, 0.6, 0.4 + roll, 1.1, t, b.phase);
+        boxRot(out, x + 0.32, yy - 0.3, b.z + 0.06, 0.4, 0.12, 0.12, -0.25, 0.2, 1.9 + roll, texMeat);
+        // torn shoulder stump, split bone jutting out of it
+        boxRot(out, x - 0.32, yy + 0.16, b.z, 0.16, 0.2, 0.16, 0.3, 0.5, 0.4, texMeat);
+        boxRot(out, x - 0.5, yy + 0.3, b.z - 0.03, 0.22, 0.05, 0.05, 0.5, 0.9, 1.15, texCrate);
+        // strips of skin trailing off the tear, drifting in the current
+        for (let i = 0; i < 3; i++) {
+          const f = Math.sin(t * 0.7 + b.phase + i * 1.3) * 0.35;
+          boxRot(
+            out,
+            x - 0.46 - i * 0.05,
+            yy + 0.24 - i * 0.09,
+            b.z + 0.05 + i * 0.06,
+            0.2,
+            0.015,
+            0.09,
+            0.2 + f,
+            0.6 + f * 0.8,
+            1.4 + f,
+            texMeat,
+          );
+        }
+        handInto(out, x + 0.46, yy - 0.5, b.z + 0.08, 0.6, 0.4 + roll, 1.8, t, b.phase);
       } else if (b.kind === "leg") {
         // thigh, tilted across the current
-        boxRot(out, x, yy + 0.2, b.z, 0.18, 0.62, 0.18, 0.2, 0.3, 0.42 + roll, texSuit);
+        boxRot(out, x, yy + 0.2, b.z, 0.18, 0.62, 0.18, 0.2, 0.3 + turn * 0.3, 0.42 + roll, texSuit);
         // shin folded at an impossible knee angle
-        boxRot(out, x + 0.3, yy - 0.22, b.z + 0.05, 0.16, 0.5, 0.16, -0.35, 0.2, -0.85 + roll, texSuit);
-        boxRot(out, x + 0.48, yy - 0.5, b.z + 0.14, 0.22, 0.15, 0.32, -0.4, 0.25, -0.9, texCrate);
-        boxRot(out, x - 0.1, yy + 0.52, b.z, 0.2, 0.14, 0.2, 0.25, 0.3, 0.5, texMeat);
+        boxRot(out, x + 0.3, yy - 0.22, b.z + 0.05, 0.16, 0.5, 0.16, -0.35, 0.2, -1.45 + roll, texSuit);
+        // the boot, twisted a half turn from where the knee points
+        boxRot(out, x + 0.5, yy - 0.52, b.z + 0.16, 0.22, 0.15, 0.32, -0.4, 2.4, -0.9, texCrate);
+        // hip socket, torn open — femur head still in it
+        boxRot(out, x - 0.1, yy + 0.54, b.z, 0.22, 0.16, 0.22, 0.25, 0.3, 0.5, texMeat);
+        boxRot(out, x - 0.16, yy + 0.68, b.z + 0.02, 0.1, 0.1, 0.1, 0.4, 0.7, 0.3, texCrate);
+        for (let i = 0; i < 3; i++) {
+          const f = Math.sin(t * 0.6 + b.phase + i) * 0.4;
+          boxRot(out, x - 0.14 + i * 0.05, yy + 0.74 + i * 0.07, b.z - 0.04, 0.13, 0.014, 0.07, f, 0.5 + f, 1.1 + f, texMeat);
+        }
       } else {
         // torso turning on its own axis
-        boxRot(out, x, yy, b.z, 0.5, 0.64, 0.32, 0.28, t * 0.12 + b.phase, 0.35 + roll, texSuit);
-        boxRot(out, x + 0.08, yy + 0.16, b.z + 0.18, 0.28, 0.28, 0.06, 0.28, t * 0.12 + b.phase, 0.35, texMeat);
-        // one arm still attached, wrenched back — with a hand
-        boxRot(out, x - 0.38, yy + 0.24, b.z - 0.04, 0.42, 0.12, 0.12, 0.2, -0.4, 0.9 + roll, texMeat);
-        handInto(out, x - 0.62, yy + 0.06, b.z - 0.1, 0.4, -0.6, 0.8, t, b.phase + 1.7);
+        boxRot(out, x, yy, b.z, 0.5, 0.64, 0.32, 0.28, turn * 1.4, 0.35 + roll, texSuit);
+        // chest cavity opened up, ribs splayed outward like a cage pulled apart
+        boxRot(out, x + 0.08, yy + 0.16, b.z + 0.18, 0.28, 0.28, 0.06, 0.28, turn * 1.4, 0.35, texMeat);
+        for (let i = 0; i < 4; i++) {
+          const a = turn * 1.4;
+          const rib = 0.18 - i * 0.12;
+          boxRot(
+            out,
+            x + 0.08 + Math.cos(a) * 0.26,
+            yy + rib,
+            b.z + 0.18 + Math.sin(a) * 0.1,
+            0.05,
+            0.03,
+            0.24,
+            0.1,
+            a + 0.4,
+            0.5 + i * 0.12,
+            texCrate,
+          );
+        }
+        // something soft still hanging out of the cavity
+        boxRot(out, x + 0.16, yy - 0.06, b.z + 0.28, 0.12, 0.16, 0.12, Math.sin(t * 0.5) * 0.3, turn, 0.2, texMeat);
+        // one arm still attached, wrenched back the wrong way — with a hand
+        boxRot(out, x - 0.38, yy + 0.24, b.z - 0.04, 0.42, 0.12, 0.12, 0.2, -0.4, 1.6 + roll, texMeat);
+        handInto(out, x - 0.62, yy + 0.06, b.z - 0.1, 0.4, -0.6, 1.5, t, b.phase + 1.7);
+        // stump of the second leg, sheared at the thigh
         boxRot(out, x + 0.3, yy - 0.3, b.z, 0.14, 0.3, 0.14, 0.4, 0.3, -0.6, texMeat);
+        boxRot(out, x + 0.34, yy - 0.5, b.z + 0.02, 0.08, 0.09, 0.08, 0.2, 0.4, -0.4, texCrate);
       }
     }
+
     // blood suspended around the remains — thinned out, dissolving into the water
     const gore = bodies.flatMap((b) =>
       Array.from({ length: 64 }, () => {
