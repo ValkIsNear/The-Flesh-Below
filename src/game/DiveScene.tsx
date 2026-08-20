@@ -681,7 +681,7 @@ export default function DiveScene({ onReach }: Props) {
           setLog({ line: b.line, sub: b.sub });
           setLogOn(true);
           softChime();
-          clang("hydraulic");
+
         }
       }
 
@@ -713,8 +713,11 @@ export default function DiveScene({ onReach }: Props) {
 
       cam.yaw += turn * 1.7 * dt;
       const sp = 2.7;
-      cam.z += Math.cos(cam.yaw) * fwd * sp * dt + Math.sin(cam.yaw) * strafe * sp * 0.7 * dt;
-      cam.x += Math.sin(cam.yaw) * fwd * sp * dt - Math.cos(cam.yaw) * strafe * sp * 0.7 * dt;
+      // The renderer mirrors camera-space X, so world X motion is negated to
+      // keep W walking toward whatever the player is actually looking at.
+      cam.z += Math.cos(cam.yaw) * fwd * sp * dt - Math.sin(cam.yaw) * strafe * sp * 0.7 * dt;
+      cam.x += -Math.sin(cam.yaw) * fwd * sp * dt - Math.cos(cam.yaw) * strafe * sp * 0.7 * dt;
+
       cam.x = Math.max(-HALF_W + 0.5, Math.min(HALF_W - 0.5, cam.x));
       cam.z = Math.max(0.7, Math.min(CORRIDOR_LEN - 1.6, cam.z));
 

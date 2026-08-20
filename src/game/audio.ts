@@ -109,25 +109,28 @@ export function softChime() {
   const now = c.currentTime;
   const lp = c.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 2200;
+  lp.frequency.value = 1500;
   lp.connect(c.destination);
+  // Kin to the hull-tap of the footsteps, but higher, softer and ringing.
   [
-    { f: 660, t: 0, amp: 0.05 },
-    { f: 880, t: 0.14, amp: 0.035 },
-  ].forEach(({ f, t, amp }) => {
+    { f: 392, t: 0, amp: 0.045, type: "triangle" as OscillatorType },
+    { f: 587, t: 0.11, amp: 0.03, type: "sine" as OscillatorType },
+    { f: 1174, t: 0.11, amp: 0.012, type: "sine" as OscillatorType },
+  ].forEach(({ f, t, amp, type }) => {
     const o = c.createOscillator();
     const g = c.createGain();
-    o.type = "sine";
+    o.type = type;
     o.frequency.value = f;
     const s = now + t;
     g.gain.setValueAtTime(0.0001, s);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, amp * masterVolume), s + 0.09);
-    g.gain.exponentialRampToValueAtTime(0.0001, s + 1.1);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, amp * masterVolume), s + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, s + 1.5);
     o.connect(g).connect(lp);
     o.start(s);
-    o.stop(s + 1.2);
+    o.stop(s + 1.6);
   });
 }
+
 
 export function heartbeat() {
   const c = getCtx();
