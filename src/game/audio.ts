@@ -101,6 +101,34 @@ export function clang(kind: "step" | "hydraulic" = "step") {
   o.stop(now + dur + 0.02);
 }
 
+// Soft, non-intrusive notification chime: two quiet sine tones, slow attack,
+// long tail — closer to a distant sonar blip than an alert.
+export function softChime() {
+  const c = getCtx();
+  if (!c) return;
+  const now = c.currentTime;
+  const lp = c.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 2200;
+  lp.connect(c.destination);
+  [
+    { f: 660, t: 0, amp: 0.05 },
+    { f: 880, t: 0.14, amp: 0.035 },
+  ].forEach(({ f, t, amp }) => {
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = "sine";
+    o.frequency.value = f;
+    const s = now + t;
+    g.gain.setValueAtTime(0.0001, s);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, amp * masterVolume), s + 0.09);
+    g.gain.exponentialRampToValueAtTime(0.0001, s + 1.1);
+    o.connect(g).connect(lp);
+    o.start(s);
+    o.stop(s + 1.2);
+  });
+}
+
 export function heartbeat() {
   const c = getCtx();
   if (!c) return;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clang } from "./audio";
+import { clang, softChime } from "./audio";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
 // The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
@@ -23,6 +23,7 @@ export default function DiveScene({ onReach }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reachedRef = useRef(false);
   const [log, setLog] = useState<{ line: string; sub: string } | null>(null);
+  const [logOn, setLogOn] = useState(false);
 
 
   useEffect(() => {
@@ -647,6 +648,7 @@ export default function DiveScene({ onReach }: Props) {
     let returnYaw = 0; // where the camera was before the forced look
     let returnT = 0; // seconds left of easing back
     let logTimer = 0;
+    let logClear = 0; // seconds left before unmounting the faded-out block
 
     function update(dt: number) {
       time += dt;
@@ -719,13 +721,22 @@ export default function DiveScene({ onReach }: Props) {
           focusT = 2.2;
           returnT = 0;
           logTimer = 8;
+          logClear = 0;
           setLog({ line: b.line, sub: b.sub });
+          setLogOn(true);
+          softChime();
           clang("hydraulic");
         }
       }
       if (logTimer > 0) {
         logTimer -= dt;
-        if (logTimer <= 0) setLog(null);
+        if (logTimer <= 0) {
+          setLogOn(false); // starts the slow CSS fade
+          logClear = 2.4;
+        }
+      } else if (logClear > 0) {
+        logClear -= dt;
+        if (logClear <= 0) setLog(null);
       }
 
       for (const d of drops) {
@@ -907,6 +918,9 @@ export default function DiveScene({ onReach }: Props) {
             lineHeight: 1.5,
             letterSpacing: "0.02em",
             pointerEvents: "none",
+            opacity: logOn ? 1 : 0,
+            filter: logOn ? "blur(0px)" : "blur(1.5px)",
+            transition: "opacity 2.2s ease-out, filter 2.2s ease-out",
           }}
         >
           <div style={{ color: "rgba(220,120,120,0.95)", marginBottom: 6 }}>{log.line}</div>
