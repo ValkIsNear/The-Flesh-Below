@@ -918,6 +918,9 @@ export default function DiveScene({ onReach }: Props) {
             lineHeight: 1.5,
             letterSpacing: "0.02em",
             pointerEvents: "none",
+            opacity: logOn ? 1 : 0,
+            filter: logOn ? "blur(0px)" : "blur(1.5px)",
+            transition: "opacity 2.2s ease-out, filter 2.2s ease-out",
           }}
         >
           <div style={{ color: "rgba(220,120,120,0.95)", marginBottom: 6 }}>{log.line}</div>
