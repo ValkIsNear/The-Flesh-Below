@@ -662,21 +662,46 @@ export default function DiveScene({ onReach }: Props) {
       if (keys.has("q")) strafe -= 1;
       if (keys.has("e")) strafe += 1;
 
-      if (focusT > 0) {
-        focusT -= dt;
-        fwd = 0;
+      // spot the remains from far away and keep the camera on them
+      for (const b of bodies) {
+        if (b.seen) continue;
+        const dx = b.x - cam.x;
+        const dz = b.z - cam.z;
+        if (dz > 0.8 && dx * dx + dz * dz < 8.5 * 8.5) {
+          b.seen = true;
+          (b as any).locked = true;
+          focusTarget = b;
+          returnYaw = cam.yaw;
+          focusT = 0;
+          returnT = 0;
+          logTimer = 8;
+          logClear = 0;
+          setLog({ line: b.line, sub: b.sub });
+          setLogOn(true);
+          softChime();
+          clang("hydraulic");
+        }
+      }
+
+      if (focusTarget) {
+        const dx = focusTarget.x - cam.x;
+        const dz = focusTarget.z - cam.z;
+        // The renderer mirrors camera-space X, so the look yaw must use the
+        // opposite horizontal sign to center the actual body on screen.
+        focusYaw = Math.atan2(-dx, dz);
         turn = 0;
-        strafe = 0;
         let d = focusYaw - cam.yaw;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
-        cam.yaw += d * Math.min(1, dt * 5);
-        if (focusT <= 0) returnT = 1.1;
+        cam.yaw += d * Math.min(1, dt * 4.5);
+        // release just before drawing level with it
+        if (dz < 1.6) {
+          focusTarget = null;
+          returnT = 1.1;
+        }
       } else if (returnT > 0) {
         returnT -= dt;
-        fwd = 0;
         turn = 0;
-        strafe = 0;
         let d = returnYaw - cam.yaw;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
@@ -707,27 +732,6 @@ export default function DiveScene({ onReach }: Props) {
         stepTimer = 0.28;
       }
 
-      // bump into the remains
-      for (const b of bodies) {
-        if (b.seen) continue;
-        const dx = b.x - cam.x;
-        const dz = b.z - cam.z;
-        if (dx * dx + dz * dz < 2.4 * 2.4) {
-          b.seen = true;
-          returnYaw = cam.yaw;
-          // The renderer mirrors camera-space X, so the look yaw must use the
-          // opposite horizontal sign to center the actual body on screen.
-          focusYaw = Math.atan2(-dx, dz);
-          focusT = 2.2;
-          returnT = 0;
-          logTimer = 8;
-          logClear = 0;
-          setLog({ line: b.line, sub: b.sub });
-          setLogOn(true);
-          softChime();
-          clang("hydraulic");
-        }
-      }
       if (logTimer > 0) {
         logTimer -= dt;
         if (logTimer <= 0) {
