@@ -681,7 +681,7 @@ export default function DiveScene({ onReach }: Props) {
           setLog({ line: b.line, sub: b.sub });
           setLogOn(true);
           softChime();
-          clang("hydraulic");
+
         }
       }
 
