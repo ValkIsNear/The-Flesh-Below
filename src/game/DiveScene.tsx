@@ -721,13 +721,22 @@ export default function DiveScene({ onReach }: Props) {
           focusT = 2.2;
           returnT = 0;
           logTimer = 8;
+          logClear = 0;
           setLog({ line: b.line, sub: b.sub });
+          setLogOn(true);
+          softChime();
           clang("hydraulic");
         }
       }
       if (logTimer > 0) {
         logTimer -= dt;
-        if (logTimer <= 0) setLog(null);
+        if (logTimer <= 0) {
+          setLogOn(false); // starts the slow CSS fade
+          logClear = 2.4;
+        }
+      } else if (logClear > 0) {
+        logClear -= dt;
+        if (logClear <= 0) setLog(null);
       }
 
       for (const d of drops) {
