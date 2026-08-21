@@ -254,17 +254,17 @@ export default function DiveScene({ onReach }: Props) {
         phase: 0.4,
         seen: false,
         line: "Jebote—",
-        sub: "An arm, snapped open like a broken wing. The elbow bends the wrong way, patient and slow, and a red thread of her keeps unwinding into the water.",
+        sub: "An arm, snapped open like a broken wing. Black threads grow out of the tear, jointed wrong, and something yellow blinks along them when my lamp gets close.",
       },
       {
         x: 1.45,
-        y: 0.9,
+        y: 1.3,
         z: 41,
-        kind: "leg",
+        kind: "arm",
         phase: 2.1,
         seen: false,
         line: "Ne gledaj.",
-        sub: "The boot is still sealed. The knee is folded at an angle a knee cannot hold, and the clouds leaking out of the seam are almost pretty in the lamp.",
+        sub: "Another arm, and the same black roots. They twitch toward the light. This is not decay — it is a tumor, and it is growing itself a body out of ours.",
       },
       {
         x: -1.25,
@@ -273,10 +273,29 @@ export default function DiveScene({ onReach }: Props) {
         kind: "torso",
         phase: 4.4,
         seen: false,
-        line: "Nije ona.",
-        sub: "A torso turning on its own axis, chest opened toward you like a question. You check the collar tag anyway. You always check. It is never her.",
+        line: "Tumor. Mora da se istera.",
+        sub: "The torso is the nest. The tendrils pulse in time with the yellow lights, learning a rhythm. It has to be driven out of the sector before it learns a voice.",
       },
     ];
+    // legs she walks past without a second look — no focus, no log
+    const strays = [
+      { x: 1.3, y: 1.05, z: 27, phase: 1.1 },
+      { x: -1.5, y: 0.95, z: 53, phase: 3.4 },
+      { x: 1.35, y: 1.15, z: 79, phase: 5.2 },
+    ];
+    // black jointed tendrils with glimmering yellow nodes, one bundle per part
+    const tendrils = bodies.flatMap((b) =>
+      Array.from({ length: 5 }, (_, i) => {
+        const joints = Array.from({ length: 5 }, (_, j) => ({
+          ox: (rnd() - 0.5) * 0.5 * (j + 1),
+          oy: (rnd() - 0.5) * 0.45 * (j + 1),
+          oz: (rnd() - 0.5) * 0.5 * (j + 1),
+          ph: rnd() * 6.28,
+        }));
+        return { b, i, joints, node: 1 + ((rnd() * 3) | 0), ph: rnd() * 6.28 };
+      }),
+    );
+
     // rotated box — lets limbs hang at wrong, sickening angles
     const boxRot = (
       out: Poly[],
