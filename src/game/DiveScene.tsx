@@ -678,15 +678,16 @@ export default function DiveScene({ onReach }: Props) {
       if (keys.has("q")) strafe -= 1;
       if (keys.has("e")) strafe += 1;
 
-      // spot the remains from far away and keep the camera on them
+      // notice the remains only once we are right next to them
       for (const b of bodies) {
         if (b.seen) continue;
         const dx = b.x - cam.x;
         const dz = b.z - cam.z;
-        if (dz > 0.8 && dx * dx + dz * dz < 8.5 * 8.5) {
+        if (dz > -0.4 && dx * dx + dz * dz < 3.2 * 3.2) {
           b.seen = true;
           (b as any).locked = true;
           focusTarget = b;
+          focusHold = 2.4;
           returnYaw = cam.yaw;
           focusT = 0;
           returnT = 0;
@@ -705,17 +706,21 @@ export default function DiveScene({ onReach }: Props) {
         // The renderer mirrors camera-space X, so the look yaw must use the
         // opposite horizontal sign to center the actual body on screen.
         focusYaw = Math.atan2(-dx, dz);
+        // freeze the player while the remains hold her attention
         turn = 0;
+        fwd = 0;
+        strafe = 0;
         let d = focusYaw - cam.yaw;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
         cam.yaw += d * Math.min(1, dt * 4.5);
-        // release just before drawing level with it
-        if (dz < 1.6) {
+        focusHold -= dt;
+        if (focusHold <= 0) {
           focusTarget = null;
           returnT = 1.1;
         }
       } else if (returnT > 0) {
+
         returnT -= dt;
         turn = 0;
         let d = returnYaw - cam.yaw;
