@@ -284,18 +284,24 @@ export default function DiveScene({ onReach }: Props) {
       { x: 1.35, y: 1.15, z: 79, kind: "leg", phase: 5.2, seen: true, line: "", sub: "" },
     ];
 
-    // black jointed tendrils with glimmering yellow nodes, one bundle per part
+    // short black tendrils clinging to the surface of each part
     const tendrils = bodies.flatMap((b) =>
-      Array.from({ length: 5 }, (_, i) => {
-        const joints = Array.from({ length: 5 }, (_, j) => ({
-          ox: (rnd() - 0.5) * 0.5 * (j + 1),
-          oy: (rnd() - 0.5) * 0.45 * (j + 1),
-          oz: (rnd() - 0.5) * 0.5 * (j + 1),
+      Array.from({ length: 6 }, (_, i) => {
+        const base = {
+          bx: (rnd() - 0.5) * 0.34,
+          by: (rnd() - 0.5) * 0.24,
+          bz: (rnd() - 0.5) * 0.34,
+        };
+        const joints = Array.from({ length: 4 }, () => ({
+          ox: (rnd() - 0.5) * 0.14,
+          oy: (rnd() - 0.5) * 0.12,
+          oz: (rnd() - 0.5) * 0.14,
           ph: rnd() * 6.28,
         }));
-        return { b, i, joints, node: 1 + ((rnd() * 3) | 0), ph: rnd() * 6.28 };
+        return { b, i, base, joints, node: rnd() < 0.45 ? 1 : 0, ph: rnd() * 6.28 };
       }),
     );
+
 
     // rotated box — lets limbs hang at wrong, sickening angles
     const boxRot = (
