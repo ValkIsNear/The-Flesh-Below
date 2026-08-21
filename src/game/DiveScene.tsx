@@ -790,7 +790,60 @@ export default function DiveScene({ onReach }: Props) {
       const dyn: Poly[] = [];
       huskPolys(dyn, time);
       for (const b of bodies) bodyPolys(dyn, b, time);
+      for (const s of strays) bodyPolys(dyn, s, time);
       drawPolys([...level, ...dyn]);
+
+      // black tendrils growing out of the remains, with glimmering yellow nodes
+      for (const t of tendrils) {
+        const b = t.b;
+        const dz = b.z - cam.z;
+        const dxx = b.x - cam.x;
+        const dist = Math.sqrt(dxx * dxx + dz * dz);
+        const near = Math.max(0, Math.min(1, (14 - dist) / 12));
+        if (near <= 0) continue;
+        const pts: { x: number; y: number; z: number }[] = [];
+        let ax = b.x,
+          ay = b.y,
+          az = b.z;
+        for (let j = 0; j < t.joints.length; j++) {
+          const jt = t.joints[j];
+          const wob = Math.sin(time * 0.9 + jt.ph + j) * 0.06 * (j + 1) * 0.35;
+          ax += jt.ox * 0.5 + wob;
+          ay += jt.oy * 0.5 + Math.cos(time * 0.7 + jt.ph) * 0.03 * (j + 1) * 0.3;
+          az += jt.oz * 0.5;
+          const p = toCam({ x: ax, y: ay, z: az });
+          if (p.z < 0.4) break;
+          const s = proj(p);
+          pts.push({ x: s.x, y: s.y, z: p.z });
+        }
+        if (pts.length < 2) continue;
+        const fog = Math.min(1, Math.max(0, (pts[0].z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
+        if (fog >= 1) continue;
+        ctx.strokeStyle = `rgba(6,4,8,${(0.55 + near * 0.45) * (1 - fog)})`;
+        ctx.lineWidth = Math.max(1, 3 / Math.max(1, pts[0].z * 0.5));
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        // yellow nodes flickering harder the closer she gets
+        for (let n = 0; n < t.node; n++) {
+          const p = pts[Math.min(pts.length - 1, 1 + n * 2)];
+          const glim = 0.35 + 0.65 * Math.abs(Math.sin(time * (1.6 + near * 3) + t.ph + n));
+          const a = glim * near * (1 - fog);
+          const r = Math.max(1.2, (5 / p.z) * (0.7 + near));
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
+          g.addColorStop(0, `rgba(255,214,90,${Math.min(1, a)})`);
+          g.addColorStop(1, "rgba(255,180,40,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(255,240,170,${Math.min(1, a)})`;
+          ctx.fillRect(p.x - r * 0.3, p.y - r * 0.3, r * 0.6, r * 0.6);
+        }
+      }
+
+
 
       // suspended blood around the remains
       for (const g of gore) {
