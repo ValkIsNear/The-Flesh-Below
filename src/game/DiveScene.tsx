@@ -254,17 +254,17 @@ export default function DiveScene({ onReach }: Props) {
         phase: 0.4,
         seen: false,
         line: "Jebote—",
-        sub: "An arm, snapped open like a broken wing. The elbow bends the wrong way, patient and slow, and a red thread of her keeps unwinding into the water.",
+        sub: "An arm, snapped open like a broken wing. Black threads grow out of the tear, jointed wrong, and something yellow blinks along them when my lamp gets close.",
       },
       {
         x: 1.45,
-        y: 0.9,
+        y: 1.3,
         z: 41,
-        kind: "leg",
+        kind: "arm",
         phase: 2.1,
         seen: false,
         line: "Ne gledaj.",
-        sub: "The boot is still sealed. The knee is folded at an angle a knee cannot hold, and the clouds leaking out of the seam are almost pretty in the lamp.",
+        sub: "Another arm, and the same black roots. They twitch toward the light. This is not decay — it is a tumor, and it is growing itself a body out of ours.",
       },
       {
         x: -1.25,
@@ -273,10 +273,30 @@ export default function DiveScene({ onReach }: Props) {
         kind: "torso",
         phase: 4.4,
         seen: false,
-        line: "Nije ona.",
-        sub: "A torso turning on its own axis, chest opened toward you like a question. You check the collar tag anyway. You always check. It is never her.",
+        line: "Tumor. Mora da se istera.",
+        sub: "The torso is the nest. The tendrils pulse in time with the yellow lights, learning a rhythm. It has to be driven out of the sector before it learns a voice.",
       },
     ];
+    // legs she walks past without a second look — no focus, no log
+    const strays: Body[] = [
+      { x: 1.3, y: 1.05, z: 27, kind: "leg", phase: 1.1, seen: true, line: "", sub: "" },
+      { x: -1.5, y: 0.95, z: 53, kind: "leg", phase: 3.4, seen: true, line: "", sub: "" },
+      { x: 1.35, y: 1.15, z: 79, kind: "leg", phase: 5.2, seen: true, line: "", sub: "" },
+    ];
+
+    // black jointed tendrils with glimmering yellow nodes, one bundle per part
+    const tendrils = bodies.flatMap((b) =>
+      Array.from({ length: 5 }, (_, i) => {
+        const joints = Array.from({ length: 5 }, (_, j) => ({
+          ox: (rnd() - 0.5) * 0.5 * (j + 1),
+          oy: (rnd() - 0.5) * 0.45 * (j + 1),
+          oz: (rnd() - 0.5) * 0.5 * (j + 1),
+          ph: rnd() * 6.28,
+        }));
+        return { b, i, joints, node: 1 + ((rnd() * 3) | 0), ph: rnd() * 6.28 };
+      }),
+    );
+
     // rotated box — lets limbs hang at wrong, sickening angles
     const boxRot = (
       out: Poly[],
@@ -608,27 +628,21 @@ export default function DiveScene({ onReach }: Props) {
       }
     }
 
-    // ---- the Husk (low-poly body, textured) --------------------------------
+    // ---- the head at the end of the corridor -------------------------------
     function huskPolys(out: Poly[], time: number) {
       const bob = Math.sin(time * 0.6) * 0.05;
       const pz = CORRIDOR_LEN - 3.5;
-      boxInto(out, 0, 1.0 + bob, pz, 0.55, 0.9, 0.32, texSuit); // torso
-      boxInto(out, 0, 1.3 + bob, pz + 0.16, 0.28, 0.28, 0.04, texMeat); // ruptured chest
-      boxInto(out, -0.6, 1.6 + bob, pz + 0.05, 0.75, 0.14, 0.14, texSuit); // broken-wing arm
-      boxInto(out, -0.95, 1.25 + bob, pz + 0.05, 0.12, 0.4, 0.12, texMeat); // dangling forearm
-      boxInto(out, 0.42, 1.25 + bob, pz, 0.14, 0.5, 0.18, texSuit);
-      boxInto(out, 0, 1.9 + bob, pz, 0.34, 0.34, 0.34, texCrate); // helmet
-      out.push({
-        v: [
-          { x: -1, y: 0.02, z: pz - 1, u: 0, w: 0 },
-          { x: 1, y: 0.02, z: pz - 1, u: 1, w: 0 },
-          { x: 1, y: 0.02, z: pz + 1, u: 1, w: 1 },
-          { x: -1, y: 0.02, z: pz + 1, u: 0, w: 1 },
-        ],
-        tex: texMeat,
-        shade: 0.7,
-      });
+      const turn = Math.sin(time * 0.15) * 0.5;
+      // a helmeted head alone in the water, slowly rotating to face the light
+      boxRot(out, 0, 1.55 + bob, pz, 0.34, 0.36, 0.34, 0.12, turn, 0.1, texCrate);
+      boxRot(out, 0, 1.53 + bob, pz - 0.18, 0.22, 0.16, 0.04, 0.12, turn, 0.1, texMeat); // shattered visor
+      boxRot(out, 0, 1.33 + bob, pz + 0.02, 0.18, 0.12, 0.18, 0.2, turn, 0.3, texMeat); // torn neck
+      for (let i = 0; i < 4; i++) {
+        const f = Math.sin(time * 0.6 + i * 1.4) * 0.4;
+        boxRot(out, (i - 1.5) * 0.05, 1.24 + bob - i * 0.03, pz + 0.03, 0.12, 0.014, 0.07, f, 0.4 + f, 1.1 + f, texMeat);
+      }
     }
+
 
     const drops = Array.from({ length: 30 }, () => ({
       x: (rnd() - 0.5) * 1.6,
@@ -776,7 +790,60 @@ export default function DiveScene({ onReach }: Props) {
       const dyn: Poly[] = [];
       huskPolys(dyn, time);
       for (const b of bodies) bodyPolys(dyn, b, time);
+      for (const s of strays) bodyPolys(dyn, s, time);
       drawPolys([...level, ...dyn]);
+
+      // black tendrils growing out of the remains, with glimmering yellow nodes
+      for (const t of tendrils) {
+        const b = t.b;
+        const dz = b.z - cam.z;
+        const dxx = b.x - cam.x;
+        const dist = Math.sqrt(dxx * dxx + dz * dz);
+        const near = Math.max(0, Math.min(1, (14 - dist) / 12));
+        if (near <= 0) continue;
+        const pts: { x: number; y: number; z: number }[] = [];
+        let ax = b.x,
+          ay = b.y,
+          az = b.z;
+        for (let j = 0; j < t.joints.length; j++) {
+          const jt = t.joints[j];
+          const wob = Math.sin(time * 0.9 + jt.ph + j) * 0.06 * (j + 1) * 0.35;
+          ax += jt.ox * 0.5 + wob;
+          ay += jt.oy * 0.5 + Math.cos(time * 0.7 + jt.ph) * 0.03 * (j + 1) * 0.3;
+          az += jt.oz * 0.5;
+          const p = toCam({ x: ax, y: ay, z: az });
+          if (p.z < 0.4) break;
+          const s = proj(p);
+          pts.push({ x: s.x, y: s.y, z: p.z });
+        }
+        if (pts.length < 2) continue;
+        const fog = Math.min(1, Math.max(0, (pts[0].z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
+        if (fog >= 1) continue;
+        ctx.strokeStyle = `rgba(6,4,8,${(0.55 + near * 0.45) * (1 - fog)})`;
+        ctx.lineWidth = Math.max(1, 3 / Math.max(1, pts[0].z * 0.5));
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        // yellow nodes flickering harder the closer she gets
+        for (let n = 0; n < t.node; n++) {
+          const p = pts[Math.min(pts.length - 1, 1 + n * 2)];
+          const glim = 0.35 + 0.65 * Math.abs(Math.sin(time * (1.6 + near * 3) + t.ph + n));
+          const a = glim * near * (1 - fog);
+          const r = Math.max(1.2, (5 / p.z) * (0.7 + near));
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
+          g.addColorStop(0, `rgba(255,214,90,${Math.min(1, a)})`);
+          g.addColorStop(1, "rgba(255,180,40,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(255,240,170,${Math.min(1, a)})`;
+          ctx.fillRect(p.x - r * 0.3, p.y - r * 0.3, r * 0.6, r * 0.6);
+        }
+      }
+
+
 
       // suspended blood around the remains
       for (const g of gore) {
