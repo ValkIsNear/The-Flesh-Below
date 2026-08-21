@@ -628,27 +628,21 @@ export default function DiveScene({ onReach }: Props) {
       }
     }
 
-    // ---- the Husk (low-poly body, textured) --------------------------------
+    // ---- the head at the end of the corridor -------------------------------
     function huskPolys(out: Poly[], time: number) {
       const bob = Math.sin(time * 0.6) * 0.05;
       const pz = CORRIDOR_LEN - 3.5;
-      boxInto(out, 0, 1.0 + bob, pz, 0.55, 0.9, 0.32, texSuit); // torso
-      boxInto(out, 0, 1.3 + bob, pz + 0.16, 0.28, 0.28, 0.04, texMeat); // ruptured chest
-      boxInto(out, -0.6, 1.6 + bob, pz + 0.05, 0.75, 0.14, 0.14, texSuit); // broken-wing arm
-      boxInto(out, -0.95, 1.25 + bob, pz + 0.05, 0.12, 0.4, 0.12, texMeat); // dangling forearm
-      boxInto(out, 0.42, 1.25 + bob, pz, 0.14, 0.5, 0.18, texSuit);
-      boxInto(out, 0, 1.9 + bob, pz, 0.34, 0.34, 0.34, texCrate); // helmet
-      out.push({
-        v: [
-          { x: -1, y: 0.02, z: pz - 1, u: 0, w: 0 },
-          { x: 1, y: 0.02, z: pz - 1, u: 1, w: 0 },
-          { x: 1, y: 0.02, z: pz + 1, u: 1, w: 1 },
-          { x: -1, y: 0.02, z: pz + 1, u: 0, w: 1 },
-        ],
-        tex: texMeat,
-        shade: 0.7,
-      });
+      const turn = Math.sin(time * 0.15) * 0.5;
+      // a helmeted head alone in the water, slowly rotating to face the light
+      boxRot(out, 0, 1.55 + bob, pz, 0.34, 0.36, 0.34, 0.12, turn, 0.1, texCrate);
+      boxRot(out, 0, 1.53 + bob, pz - 0.18, 0.22, 0.16, 0.04, 0.12, turn, 0.1, texMeat); // shattered visor
+      boxRot(out, 0, 1.33 + bob, pz + 0.02, 0.18, 0.12, 0.18, 0.2, turn, 0.3, texMeat); // torn neck
+      for (let i = 0; i < 4; i++) {
+        const f = Math.sin(time * 0.6 + i * 1.4) * 0.4;
+        boxRot(out, (i - 1.5) * 0.05, 1.24 + bob - i * 0.03, pz + 0.03, 0.12, 0.014, 0.07, f, 0.4 + f, 1.1 + f, texMeat);
+      }
     }
+
 
     const drops = Array.from({ length: 30 }, () => ({
       x: (rnd() - 0.5) * 1.6,
