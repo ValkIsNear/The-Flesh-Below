@@ -278,11 +278,12 @@ export default function DiveScene({ onReach }: Props) {
       },
     ];
     // legs she walks past without a second look — no focus, no log
-    const strays = [
-      { x: 1.3, y: 1.05, z: 27, phase: 1.1 },
-      { x: -1.5, y: 0.95, z: 53, phase: 3.4 },
-      { x: 1.35, y: 1.15, z: 79, phase: 5.2 },
+    const strays: Body[] = [
+      { x: 1.3, y: 1.05, z: 27, kind: "leg", phase: 1.1, seen: true, line: "", sub: "" },
+      { x: -1.5, y: 0.95, z: 53, kind: "leg", phase: 3.4, seen: true, line: "", sub: "" },
+      { x: 1.35, y: 1.15, z: 79, kind: "leg", phase: 5.2, seen: true, line: "", sub: "" },
     ];
+
     // black jointed tendrils with glimmering yellow nodes, one bundle per part
     const tendrils = bodies.flatMap((b) =>
       Array.from({ length: 5 }, (_, i) => {
