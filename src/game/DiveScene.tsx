@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clang } from "./audio";
+import { clang, heartbeat } from "./audio";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
 // The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
@@ -12,9 +12,9 @@ const FOCAL = 300;
 const CORRIDOR_LEN = 96;
 const HALF_W = 2.6;
 const CEIL = 3.2;
-const FOG_NEAR = 2;
-const FOG_FAR = 16;
-const FOG = [4, 5, 8] as const;
+const FOG_NEAR = 1.4;
+const FOG_FAR = 10;
+const FOG = [2, 2, 4] as const;
 
 type V3 = { x: number; y: number; z: number; u?: number; w?: number };
 type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
@@ -673,6 +673,10 @@ export default function DiveScene({ onReach }: Props) {
     let returnT = 0; // seconds left of easing back
     let logTimer = 0;
     let logClear = 0; // seconds left before unmounting the faded-out block
+    // --- test: dread layer -------------------------------------------------
+    let dreadTimer = 6 + rnd() * 8; // distant sound events from the dark
+    let brownout = 0; // helmet lamp brownout seconds left
+    let brownoutTimer = 9 + rnd() * 10;
 
     function update(dt: number) {
       time += dt;
@@ -763,6 +767,24 @@ export default function DiveScene({ onReach }: Props) {
         cam.bob += (0 - cam.bob) * Math.min(1, dt * 5);
         stepTimer = 0.28;
       }
+
+      // --- test: things stirring far down the tunnel ----------------------
+      dreadTimer -= dt;
+      if (dreadTimer <= 0) {
+        dreadTimer = 7 + rnd() * 11;
+        // sometimes a far-off metallic groan, sometimes a pulse that is
+        // definitely not hers — deeper in, it happens more often
+        if (rnd() < 0.45 + (cam.z / CORRIDOR_LEN) * 0.3) heartbeat();
+        else clang("hydraulic");
+      }
+      brownoutTimer -= dt;
+      if (brownoutTimer <= 0) {
+        brownoutTimer = 10 + rnd() * 14;
+        brownout = 0.35 + rnd() * 0.5;
+      }
+      if (brownout > 0) brownout -= dt;
+      // slow breathing of the suit, even standing still
+      cam.bob += Math.sin(time * 1.05) * 0.006 * dt * 60 * 0.1;
 
       if (logTimer > 0) {
         logTimer -= dt;
@@ -897,7 +919,12 @@ export default function DiveScene({ onReach }: Props) {
         const p = toCam(l);
         if (p.z < 0.4) continue;
         const s = proj(p);
-        const flick = 0.6 + 0.4 * Math.sin(time * 9 + l.phase);
+        // harsher flicker with full dropouts — some lamps die as she nears
+        const s1 = Math.sin(time * 9 + l.phase);
+        const s2 = Math.sin(time * 1.3 + l.phase * 3.1);
+        let flick = 0.5 + 0.5 * s1;
+        if (s2 > 0.55 && s1 < -0.2) flick = 0.03; // bulb gives out for a beat
+        else if (s1 < -0.85) flick *= 0.15;
         const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
         const r = (240 / p.z) * (1 - fog);
         if (r < 1) continue;
@@ -920,13 +947,22 @@ export default function DiveScene({ onReach }: Props) {
         ctx.fillRect(s.x, s.y, size, size);
       }
 
-      // helmet lamp pool straight ahead
-      const lamp = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, H * 0.9);
-      lamp.addColorStop(0, "rgba(255,225,190,0.13)");
-      lamp.addColorStop(0.45, "rgba(210,120,95,0.05)");
+      // helmet lamp pool straight ahead — it breathes, wavers, and browns out
+      const lampJit = 0.75 + 0.25 * Math.sin(time * 7.3) * Math.sin(time * 2.1 + 1.7);
+      const lampLvl = brownout > 0 ? 0.12 : lampJit;
+      const lampCx = W / 2 + Math.sin(time * 0.6) * 6;
+      const lampCy = H / 2 + Math.sin(time * 0.83) * 4;
+      const lamp = ctx.createRadialGradient(lampCx, lampCy, 10, lampCx, lampCy, H * 0.9);
+      lamp.addColorStop(0, `rgba(255,225,190,${0.16 * lampLvl})`);
+      lamp.addColorStop(0.45, `rgba(210,120,95,${0.06 * lampLvl})`);
       lamp.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = lamp;
       ctx.fillRect(0, 0, W, H);
+      // brownout: the suit's light nearly dies
+      if (brownout > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.min(0.75, 0.75 * (brownout / 0.4))})`;
+        ctx.fillRect(0, 0, W, H);
+      }
 
       const mg = ctx.createLinearGradient(0, H * 0.2, 0, H);
       mg.addColorStop(0, "rgba(40,22,30,0.35)");
