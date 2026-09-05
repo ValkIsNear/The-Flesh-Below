@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clang, softChime } from "./audio";
+import { clang } from "./audio";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
 // The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
@@ -691,7 +691,7 @@ export default function DiveScene({ onReach }: Props) {
         if (b.seen) continue;
         const dx = b.x - cam.x;
         const dz = b.z - cam.z;
-        if (dz > -0.4 && dx * dx + dz * dz < 3.2 * 3.2) {
+        if (dz > 0.2 && dx * dx + dz * dz < 2.2 * 2.2) {
           b.seen = true;
           (b as any).locked = true;
           focusTarget = b;
@@ -703,7 +703,7 @@ export default function DiveScene({ onReach }: Props) {
           logClear = 0;
           setLog({ line: b.line, sub: b.sub });
           setLogOn(true);
-          softChime();
+
 
         }
       }
@@ -812,12 +812,12 @@ export default function DiveScene({ onReach }: Props) {
         const dz = b.z - cam.z;
         const dxx = b.x - cam.x;
         const dist = Math.sqrt(dxx * dxx + dz * dz);
-        const near = Math.max(0, Math.min(1, (14 - dist) / 12));
+        const near = Math.max(0, Math.min(1, (5 - dist) / 3.5));
         if (near <= 0) continue;
         const pts: { x: number; y: number; z: number }[] = [];
-        let ax = b.x,
-          ay = b.y,
-          az = b.z;
+        let ax = b.x + t.base.bx,
+          ay = b.y + t.base.by,
+          az = b.z + t.base.bz;
         for (let j = 0; j < t.joints.length; j++) {
           const jt = t.joints[j];
           const wob = Math.sin(time * 0.9 + jt.ph + j) * 0.06 * (j + 1) * 0.35;
@@ -842,8 +842,8 @@ export default function DiveScene({ onReach }: Props) {
         for (let n = 0; n < t.node; n++) {
           const p = pts[Math.min(pts.length - 1, 1 + n * 2)];
           const glim = 0.35 + 0.65 * Math.abs(Math.sin(time * (1.6 + near * 3) + t.ph + n));
-          const a = glim * near * (1 - fog);
-          const r = Math.max(1.2, (5 / p.z) * (0.7 + near));
+          const a = glim * near * (1 - fog) * 0.55;
+          const r = Math.max(0.9, (4 / p.z) * (0.5 + near * 0.6));
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
           g.addColorStop(0, `rgba(255,214,90,${Math.min(1, a)})`);
           g.addColorStop(1, "rgba(255,180,40,0)");
