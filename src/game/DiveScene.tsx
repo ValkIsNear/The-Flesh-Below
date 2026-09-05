@@ -919,7 +919,12 @@ export default function DiveScene({ onReach }: Props) {
         const p = toCam(l);
         if (p.z < 0.4) continue;
         const s = proj(p);
-        const flick = 0.6 + 0.4 * Math.sin(time * 9 + l.phase);
+        // harsher flicker with full dropouts — some lamps die as she nears
+        const s1 = Math.sin(time * 9 + l.phase);
+        const s2 = Math.sin(time * 1.3 + l.phase * 3.1);
+        let flick = 0.5 + 0.5 * s1;
+        if (s2 > 0.55 && s1 < -0.2) flick = 0.03; // bulb gives out for a beat
+        else if (s1 < -0.85) flick *= 0.15;
         const fog = Math.min(1, Math.max(0, (p.z - FOG_NEAR) / (FOG_FAR - FOG_NEAR)));
         const r = (240 / p.z) * (1 - fog);
         if (r < 1) continue;
