@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { clang } from "./audio";
+import { clang, heartbeat } from "./audio";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
 // The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
@@ -12,9 +12,9 @@ const FOCAL = 300;
 const CORRIDOR_LEN = 96;
 const HALF_W = 2.6;
 const CEIL = 3.2;
-const FOG_NEAR = 2;
-const FOG_FAR = 16;
-const FOG = [4, 5, 8] as const;
+const FOG_NEAR = 1.4;
+const FOG_FAR = 10;
+const FOG = [2, 2, 4] as const;
 
 type V3 = { x: number; y: number; z: number; u?: number; w?: number };
 type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
@@ -673,6 +673,10 @@ export default function DiveScene({ onReach }: Props) {
     let returnT = 0; // seconds left of easing back
     let logTimer = 0;
     let logClear = 0; // seconds left before unmounting the faded-out block
+    // --- test: dread layer -------------------------------------------------
+    let dreadTimer = 6 + rnd() * 8; // distant sound events from the dark
+    let brownout = 0; // helmet lamp brownout seconds left
+    let brownoutTimer = 9 + rnd() * 10;
 
     function update(dt: number) {
       time += dt;
@@ -763,6 +767,24 @@ export default function DiveScene({ onReach }: Props) {
         cam.bob += (0 - cam.bob) * Math.min(1, dt * 5);
         stepTimer = 0.28;
       }
+
+      // --- test: things stirring far down the tunnel ----------------------
+      dreadTimer -= dt;
+      if (dreadTimer <= 0) {
+        dreadTimer = 7 + rnd() * 11;
+        // sometimes a far-off metallic groan, sometimes a pulse that is
+        // definitely not hers — deeper in, it happens more often
+        if (rnd() < 0.45 + (cam.z / CORRIDOR_LEN) * 0.3) heartbeat();
+        else clang("hydraulic");
+      }
+      brownoutTimer -= dt;
+      if (brownoutTimer <= 0) {
+        brownoutTimer = 10 + rnd() * 14;
+        brownout = 0.35 + rnd() * 0.5;
+      }
+      if (brownout > 0) brownout -= dt;
+      // slow breathing of the suit, even standing still
+      cam.bob += Math.sin(time * 1.05) * 0.006 * dt * 60 * 0.1;
 
       if (logTimer > 0) {
         logTimer -= dt;
