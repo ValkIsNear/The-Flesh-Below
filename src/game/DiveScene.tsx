@@ -663,6 +663,7 @@ export default function DiveScene({ onReach }: Props) {
     let stepTimer = 0;
     let stepFlip = 0;
     let walkPhase = 0;
+    let gunMove = 0; // smoothed "is walking" flag for the viewmodel sway
     let focusT = 0; // seconds left of the forced look
     let focusYaw = 0;
     let focusTarget: (typeof bodies)[number] | null = null;
@@ -753,6 +754,7 @@ export default function DiveScene({ onReach }: Props) {
       cam.z = Math.max(0.7, Math.min(CORRIDOR_LEN - 1.6, cam.z));
 
       const moving = fwd !== 0 || strafe !== 0;
+      gunMove += ((moving ? 1 : 0) - gunMove) * Math.min(1, dt * 6);
       if (moving) {
         walkPhase += dt * 5.4;
         cam.bob = Math.sin(walkPhase) * 0.045;
@@ -981,8 +983,8 @@ export default function DiveScene({ onReach }: Props) {
       // blocky like old low-poly shooters; white panels of the ref become a
       // green so dark it nearly reads black
       {
-        const gb = Math.sin(walkPhase) * (moving ? 1 : 0.15); // follows the walk bob
-        const gx = W * 0.63 + Math.cos(walkPhase * 0.5) * (moving ? 2 : 0.4);
+        const gb = Math.sin(walkPhase) * (0.15 + gunMove * 0.85); // follows the walk bob
+        const gx = W * 0.63 + Math.cos(walkPhase * 0.5) * (0.4 + gunMove * 1.6);
         const gy = H * 0.72 + gb * 3 + Math.sin(time * 1.05) * 0.8; // breathing sway
         const u = H / 90; // block unit
         const DG = "#0d1a10"; // near-black green (body panels)
