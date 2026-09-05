@@ -842,8 +842,8 @@ export default function DiveScene({ onReach }: Props) {
         for (let n = 0; n < t.node; n++) {
           const p = pts[Math.min(pts.length - 1, 1 + n * 2)];
           const glim = 0.35 + 0.65 * Math.abs(Math.sin(time * (1.6 + near * 3) + t.ph + n));
-          const a = glim * near * (1 - fog);
-          const r = Math.max(1.2, (5 / p.z) * (0.7 + near));
+          const a = glim * near * (1 - fog) * 0.55;
+          const r = Math.max(0.9, (4 / p.z) * (0.5 + near * 0.6));
           const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
           g.addColorStop(0, `rgba(255,214,90,${Math.min(1, a)})`);
           g.addColorStop(1, "rgba(255,180,40,0)");
