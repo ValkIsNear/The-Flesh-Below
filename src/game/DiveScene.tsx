@@ -947,13 +947,22 @@ export default function DiveScene({ onReach }: Props) {
         ctx.fillRect(s.x, s.y, size, size);
       }
 
-      // helmet lamp pool straight ahead
-      const lamp = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, H * 0.9);
-      lamp.addColorStop(0, "rgba(255,225,190,0.13)");
-      lamp.addColorStop(0.45, "rgba(210,120,95,0.05)");
+      // helmet lamp pool straight ahead — it breathes, wavers, and browns out
+      const lampJit = 0.75 + 0.25 * Math.sin(time * 7.3) * Math.sin(time * 2.1 + 1.7);
+      const lampLvl = brownout > 0 ? 0.12 : lampJit;
+      const lampCx = W / 2 + Math.sin(time * 0.6) * 6;
+      const lampCy = H / 2 + Math.sin(time * 0.83) * 4;
+      const lamp = ctx.createRadialGradient(lampCx, lampCy, 10, lampCx, lampCy, H * 0.9);
+      lamp.addColorStop(0, `rgba(255,225,190,${0.16 * lampLvl})`);
+      lamp.addColorStop(0.45, `rgba(210,120,95,${0.06 * lampLvl})`);
       lamp.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = lamp;
       ctx.fillRect(0, 0, W, H);
+      // brownout: the suit's light nearly dies
+      if (brownout > 0) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.min(0.75, 0.75 * (brownout / 0.4))})`;
+        ctx.fillRect(0, 0, W, H);
+      }
 
       const mg = ctx.createLinearGradient(0, H * 0.2, 0, H);
       mg.addColorStop(0, "rgba(40,22,30,0.35)");
