@@ -977,6 +977,35 @@ export default function DiveScene({ onReach }: Props) {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
+      // ---- viewmodel: the suit's gun, held low and forward ----------------
+      // blocky like old low-poly shooters; white panels of the ref become a
+      // green so dark it nearly reads black
+      {
+        const gb = Math.sin(walkPhase) * (moving ? 1 : 0.15); // follows the walk bob
+        const gx = W * 0.63 + Math.cos(walkPhase * 0.5) * (moving ? 2 : 0.4);
+        const gy = H * 0.72 + gb * 3 + Math.sin(time * 1.05) * 0.8; // breathing sway
+        const u = H / 90; // block unit
+        const DG = "#0d1a10"; // near-black green (body panels)
+        const DG2 = "#132417"; // slightly lifted green (top plate)
+        const BK = "#060806"; // black (grip, barrel, sight)
+        const HL = "#1d3322"; // edge highlight
+        ctx.fillStyle = BK;
+        ctx.fillRect(gx - 26 * u, gy - 7 * u, 16 * u, 3 * u); // barrel
+        ctx.fillRect(gx - 24 * u, gy - 8.5 * u, 3 * u, 2 * u); // muzzle lug
+        ctx.fillStyle = DG;
+        ctx.fillRect(gx - 11 * u, gy - 9 * u, 26 * u, 6 * u); // receiver
+        ctx.fillRect(gx + 2 * u, gy - 3 * u, 7 * u, 8 * u); // grip
+        ctx.fillRect(gx + 10 * u, gy - 3 * u, 4 * u, 5 * u); // mag
+        ctx.fillStyle = DG2;
+        ctx.fillRect(gx - 11 * u, gy - 10.5 * u, 20 * u, 2 * u); // top plate
+        ctx.fillStyle = BK;
+        ctx.fillRect(gx + 6 * u, gy - 13 * u, 4 * u, 3 * u); // rear sight
+        ctx.fillRect(gx - 8 * u, gy - 12 * u, 2 * u, 2 * u); // front post
+        ctx.fillStyle = HL;
+        ctx.fillRect(gx - 11 * u, gy - 9 * u, 26 * u, 1 * u); // top edge catch-light
+        ctx.fillRect(gx - 26 * u, gy - 7 * u, 16 * u, 0.8 * u); // barrel glint
+      }
+
       // faint visor frame so we read as first-person inside the heavy suit
       ctx.fillStyle = "rgba(10,6,8,0.85)";
       ctx.fillRect(0, 0, W, 6);
