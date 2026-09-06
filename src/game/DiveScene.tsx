@@ -663,7 +663,6 @@ export default function DiveScene({ onReach }: Props) {
     let stepTimer = 0;
     let stepFlip = 0;
     let walkPhase = 0;
-    let gunMove = 0; // smoothed "is walking" flag for the viewmodel sway
     let focusT = 0; // seconds left of the forced look
     let focusYaw = 0;
     let focusTarget: (typeof bodies)[number] | null = null;
@@ -754,7 +753,6 @@ export default function DiveScene({ onReach }: Props) {
       cam.z = Math.max(0.7, Math.min(CORRIDOR_LEN - 1.6, cam.z));
 
       const moving = fwd !== 0 || strafe !== 0;
-      gunMove += ((moving ? 1 : 0) - gunMove) * Math.min(1, dt * 6);
       if (moving) {
         walkPhase += dt * 5.4;
         cam.bob = Math.sin(walkPhase) * 0.045;
@@ -979,71 +977,8 @@ export default function DiveScene({ onReach }: Props) {
       ctx.fillStyle = vg;
       ctx.fillRect(0, 0, W, H);
 
-      // ---- viewmodel: the suit's gun, held low and forward ----------------
-      // blocky like old low-poly shooters; white panels of the ref become a
-      // green so dark it nearly reads black
-      {
-        const gb = Math.sin(walkPhase) * (0.15 + gunMove * 0.85); // follows the walk bob
-        const bx = W * 0.86 + Math.cos(walkPhase * 0.5) * (0.5 + gunMove * 2.0); // grip base, bottom-right
-        const by = H * 1.0 + gb * 3.5 + Math.sin(time * 1.05) * 0.9; // breathing sway
-        const u = H / 70; // block unit — chunky
-        // barrel recedes toward screen center: every segment steps up-left
-        // (foreshortened, as if she holds it in her right hand aimed ahead)
-        const SEG = 9;
-        const stepX = -6.2 * u,
-          stepY = -2.6 * u;
-        const DG = "#080f0a"; // green so dark it reads black
-        const DG2 = "#0c1710"; // lifted plate
-        const BK = "#030503"; // black metal
-        const HL = "#14231a"; // faint edge light
-        // helper: segment i goes from grip (0) toward muzzle (SEG-1)
-        const sx = (i: number) => bx + i * stepX;
-        const sy = (i: number) => by - 14 * u + i * stepY;
-        // gloved grip hand rising from the bottom edge
-        ctx.fillStyle = BK;
-        ctx.fillRect(bx - 2 * u, by - 14 * u, 9 * u, 16 * u); // fist around grip
-        ctx.fillStyle = DG2;
-        ctx.fillRect(bx - 2 * u, by - 14 * u, 9 * u, 2.5 * u); // knuckle plate
-        for (let f = 0; f < 3; f++) {
-          ctx.fillStyle = BK;
-          ctx.fillRect(bx - 3.5 * u, by - 11 * u + f * 3 * u, 2.5 * u, 2 * u); // fingers over the front
-        }
-        // thick receiver — several stacked chunky plates
-        for (let i = 1; i < SEG - 2; i++) {
-          const shrink = i * 0.35 * u; // foreshorten toward muzzle
-          ctx.fillStyle = i % 2 === 0 ? DG : DG2;
-          ctx.fillRect(sx(i) - 5 * u, sy(i) - 6 * u + shrink, 12 * u - shrink, 9 * u - shrink * 1.4);
-        }
-        // rivet dots along the receiver (steampunk plating)
-        ctx.fillStyle = HL;
-        for (let i = 1; i < SEG - 2; i++) ctx.fillRect(sx(i) - 3 * u, sy(i) - 4.5 * u, 0.9 * u, 0.9 * u);
-        // cluster of barrels / pressure tubes running the length
-        for (let i = 0; i < SEG; i++) {
-          const shrink = i * 0.3 * u;
-          ctx.fillStyle = BK;
-          ctx.fillRect(sx(i) - 4 * u, sy(i) - 8.5 * u + shrink, 10 * u - shrink, 2.4 * u); // main barrel
-          ctx.fillRect(sx(i) - 3.4 * u, sy(i) - 5.2 * u + shrink, 9 * u - shrink, 1.4 * u); // under-tube
-          ctx.fillRect(sx(i) - 3 * u, sy(i) + 1.8 * u, 8.4 * u - shrink, 1.6 * u); // lower conduit
-        }
-        // pipe rings clamping the tubes — chunky bands every other segment
-        for (let i = 1; i < SEG; i += 2) {
-          const shrink = i * 0.3 * u;
-          ctx.fillStyle = DG2;
-          ctx.fillRect(sx(i) - 4.6 * u, sy(i) - 9.4 * u + shrink, 2.2 * u, 13.5 * u - shrink * 1.6);
-        }
-        // rear sight block near the hand, front post at the muzzle
-        ctx.fillStyle = BK;
-        ctx.fillRect(sx(SEG - 2) - 3 * u, sy(SEG - 2) - 12 * u, 5 * u, 3.6 * u); // rear housing
-        ctx.fillRect(sx(0) - 4 * u, sy(0) - 10.6 * u, 1.8 * u, 2.4 * u); // front post
-        // muzzle: dark crown + deeper bore
-        ctx.fillStyle = DG;
-        ctx.fillRect(sx(0) - 5 * u, sy(0) - 9.6 * u, 3 * u, 5.4 * u);
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(sx(0) - 4.6 * u, sy(0) - 8.6 * u, 1.8 * u, 3.2 * u); // bore shadow
-        // faint catch-light along the top edges
-        ctx.fillStyle = HL;
-        for (let i = 0; i < SEG; i++) ctx.fillRect(sx(i) - 4 * u, sy(i) - 8.5 * u + i * 0.3 * u, 10 * u - i * 0.3 * u, 0.6 * u);
-      }
+
+
 
       // faint visor frame so we read as first-person inside the heavy suit
       ctx.fillStyle = "rgba(10,6,8,0.85)";
