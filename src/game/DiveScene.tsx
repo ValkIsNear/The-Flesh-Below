@@ -663,7 +663,6 @@ export default function DiveScene({ onReach }: Props) {
     let stepTimer = 0;
     let stepFlip = 0;
     let walkPhase = 0;
-    let gunMove = 0; // smoothed "is walking" flag for the viewmodel sway
     let focusT = 0; // seconds left of the forced look
     let focusYaw = 0;
     let focusTarget: (typeof bodies)[number] | null = null;
@@ -754,7 +753,6 @@ export default function DiveScene({ onReach }: Props) {
       cam.z = Math.max(0.7, Math.min(CORRIDOR_LEN - 1.6, cam.z));
 
       const moving = fwd !== 0 || strafe !== 0;
-      gunMove += ((moving ? 1 : 0) - gunMove) * Math.min(1, dt * 6);
       if (moving) {
         walkPhase += dt * 5.4;
         cam.bob = Math.sin(walkPhase) * 0.045;
