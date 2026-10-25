@@ -1085,6 +1085,9 @@ export default function DiveScene({ onReach }: Props) {
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
       window.removeEventListener("mousemove", onMouse);
+      window.removeEventListener("mousedown", onMD);
+      window.removeEventListener("mouseup", onMU);
+      window.removeEventListener("contextmenu", onCtx);
       canvas.removeEventListener("click", onClick);
       if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     };
