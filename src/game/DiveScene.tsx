@@ -978,6 +978,41 @@ export default function DiveScene({ onReach }: Props) {
       ctx.fillRect(0, 0, W, H);
 
 
+      // held weapon: lower-right, angled toward screen center, both hands
+      {
+        const sx = Math.sin(walkPhase * 0.5) * 3;
+        const sy = Math.abs(Math.cos(walkPhase * 0.5)) * 3 + Math.sin(time * 1.1) * 1;
+        ctx.save();
+        ctx.translate(W * 0.62 + sx, H * 0.86 + sy);
+        ctx.rotate(-0.42);
+        const poly = (pts: number[][], fill: string) => {
+          ctx.beginPath();
+          ctx.moveTo(pts[0][0], pts[0][1]);
+          for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+          ctx.closePath();
+          ctx.fillStyle = fill;
+          ctx.fill();
+        };
+        // stock/body
+        poly([[-10, 6], [60, -2], [70, 14], [-4, 30]], "#0c120e");
+        // barrel shroud
+        poly([[-46, -4], [10, -10], [14, 6], [-44, 10]], "#121a15");
+        poly([[-46, -4], [10, -10], [10, -6], [-46, 0]], "#1e2a22");
+        // muzzle
+        poly([[-58, -3], [-46, -5], [-45, 9], [-57, 7]], "#070a08");
+        // top rail
+        for (let k = 0; k < 5; k++) poly([[-20 + k * 7, -11], [-15 + k * 7, -12], [-15 + k * 7, -8], [-20 + k * 7, -7]], "#26322a");
+        // dim green glow strip
+        poly([[-40, 3], [6, -1], [6, 1], [-40, 5]], "rgba(90,140,100,0.35)");
+        // grip
+        poly([[30, 10], [42, 8], [48, 34], [34, 36]], "#0a0f0c");
+        // left hand on foregrip (gloved)
+        poly([[-30, 6], [-14, 4], [-10, 22], [-22, 40], [-34, 30]], "#1a1614");
+        // right hand on grip
+        poly([[26, 14], [48, 12], [56, 36], [30, 44]], "#1c1816");
+        ctx.restore();
+      }
+
 
 
       // faint visor frame so we read as first-person inside the heavy suit
