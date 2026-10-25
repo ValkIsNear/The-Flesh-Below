@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { clang, heartbeat } from "./audio";
 
 // Non-interactive scene: the same flooded first-person tunnel as the dive,
 // but here Tamara walks up to a growth on the wall that is clearly still
@@ -208,42 +209,202 @@ export default function ChaseCutscene({ onDone }: Props) {
       ctx.strokeRect(6, 10, W - 12, H - 24);
     }
 
+    // ---- interactive kill: the first time the player fires ----
+    let phase: "walk" | "aim" | "dead" | "leave" = "walk";
+    let phaseT = 0;
+    let aiming = false;
+    let aimK = 0;
+    let mx = CX, my = CY;
+    let hits = 0;
+    let flash = 0;
+    let recoil = 0;
+    let hitFx = 0;
+    const AIM_BEAT: Beat = { at: 0, sr: "Neće me pustiti. Pucaj u oko.", en: "It won't let me go. Shoot the eye." };
+    const DEAD_BEATS: Beat[] = [
+      { at: 0.4, sr: "Gotovo.", en: "It's done." },
+      { at: 2.6, sr: "Ali ih ima još. Nazad.", en: "But there are more. Back away." },
+    ];
+    let eyeScr = { x: -999, y: -999, r: 0 };
+
+    const toCanvas = (e: MouseEvent) => {
+      const r = canvas.getBoundingClientRect();
+      mx = ((e.clientX - r.left) / r.width) * W;
+      my = ((e.clientY - r.top) / r.height) * H;
+    };
+    const onMove = (e: MouseEvent) => toCanvas(e);
+    const onDown = (e: MouseEvent) => {
+      toCanvas(e);
+      if (e.button === 2) aiming = true;
+      if (e.button === 0 && phase === "aim") {
+        flash = 0.08;
+        recoil = 1;
+        clang("hydraulic");
+        const tx = aimK > 0.5 ? mx : CX;
+        const ty = aimK > 0.5 ? my : CY;
+        if (Math.hypot(tx - eyeScr.x, ty - eyeScr.y) < eyeScr.r * 1.25) {
+          hits++;
+          hitFx = 0.4;
+          heartbeat();
+          if (hits >= 3) { phase = "dead"; phaseT = 0; shownBeat = -1; }
+        }
+      }
+    };
+    const onUp = (e: MouseEvent) => { if (e.button === 2) aiming = false; };
+    const onCtx = (e: Event) => e.preventDefault();
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("contextmenu", onCtx);
+
+    const deadK = () => (phase === "dead" || phase === "leave" ? Math.min(1, phaseT / 1.5) : 0);
+
+    function drawEye(sway: number) {
+      if (!ctx) return;
+      const z = INF_Z - camZ;
+      if (z <= 0.35) return;
+      const c = proj(1.35 + sway, -0.15, z);
+      const dk = deadK();
+      const rp = ((0.2 * (1 - dk * 0.5)) / z) * F;
+      eyeScr = { x: c.sx, y: c.sy, r: rp };
+      const blink = 0.75 + 0.25 * Math.sin(t * 3.1);
+      ctx.fillStyle = `rgba(${Math.round(200 * (1 - dk) + 40 * dk)},${Math.round(20 + hitFx * 120)},28,${0.95 * (1 - fog(z))})`;
+      ctx.beginPath();
+      ctx.ellipse(c.sx, c.sy, rp, rp * blink * (1 - dk * 0.8), 0, 0, Math.PI * 2);
+      ctx.fill();
+      // iris ring + slit pupil that follows the player
+      ctx.strokeStyle = `rgba(255,120,110,${0.6 * (1 - dk)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(c.sx, c.sy, rp * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(8,2,4,0.95)";
+      ctx.fillRect(c.sx - rp * 0.08 + (mx - CX) * 0.01, c.sy - rp * 0.5, Math.max(1, rp * 0.16), rp);
+      // wounds
+      for (let i = 0; i < hits; i++) {
+        ctx.fillStyle = "rgba(20,4,6,0.9)";
+        ctx.fillRect(c.sx + Math.cos(i * 2.3) * rp * 0.5 - 1, c.sy + Math.sin(i * 2.3) * rp * 0.4 - 1, 2, 2);
+      }
+    }
+
+    function drawGun() {
+      if (!ctx) return;
+      const walking = phase === "walk" || phase === "leave";
+      const wp = t * 5.2;
+      const sway = (walking ? 1 : 0.25) * (1 - aimK * 0.75);
+      const sx = Math.sin(wp * 0.5) * 2 * sway;
+      const sy = (Math.abs(Math.cos(wp * 0.5)) * 2 + Math.sin(t * 1.1) * 0.7) * sway + recoil * 4;
+      const lerp = (a: number, b: number) => a + (b - a) * aimK;
+      ctx.save();
+      ctx.translate(lerp(W * 0.68, W * 0.5) + sx, lerp(H * 0.95, H * 1.08) + sy);
+      ctx.rotate(lerp(0.42, Math.PI / 2) - recoil * 0.06);
+      const sc = lerp(1.05, 1.18);
+      ctx.scale(sc, sc);
+      const poly = (pts: number[][], fill: string) => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k][0], pts[k][1]);
+        ctx.closePath();
+        ctx.fillStyle = fill;
+        ctx.fill();
+      };
+      poly([[-10, 6], [60, -2], [70, 14], [-4, 30]], "#0c120e");
+      poly([[-10, 6], [60, -2], [61, 2], [-9, 10]], "#1a241d");
+      poly([[14, 22], [26, 20], [30, 44], [18, 46]], "#080c0a");
+      poly([[-46, -4], [10, -10], [14, 6], [-44, 10]], "#121a15");
+      poly([[-46, -4], [10, -10], [10, -6], [-46, 0]], "#1e2a22");
+      for (let k = 0; k < 6; k++) poly([[-40 + k * 8, 1], [-35 + k * 8, 0], [-35 + k * 8, 4], [-40 + k * 8, 5]], "#050806");
+      poly([[-58, -3], [-46, -5], [-45, 9], [-57, 7]], "#070a08");
+      poly([[-64, -1], [-58, -2], [-57, 6], [-63, 5]], "#141c17");
+      for (let k = 0; k < 8; k++) poly([[-34 + k * 7, -11], [-29 + k * 7, -12], [-29 + k * 7, -8], [-34 + k * 7, -7]], "#26322a");
+      poly([[-10, -12], [16, -15], [17, -22], [-9, -20]], "#0e1511");
+      poly([[-11, -17], [-9, -17], [-9, -14], [-11, -14]], "rgba(110,170,120,0.55)");
+      poly([[-40, 3], [6, -1], [6, 1], [-40, 5]], "rgba(90,140,100,0.35)");
+      poly([[30, 10], [42, 8], [48, 34], [34, 36]], "#0a0f0c");
+      poly([[-30, 6], [-14, 4], [-10, 22], [-22, 40], [-34, 30]], "#1a1614");
+      poly([[26, 14], [48, 12], [56, 36], [30, 44]], "#1c1816");
+      poly([[30, 44], [56, 36], [70, 70], [36, 80]], "#120e0d");
+      if (flash > 0) {
+        const g = ctx.createRadialGradient(-66, 2, 0, -66, 2, 22);
+        g.addColorStop(0, "rgba(255,220,160,0.95)");
+        g.addColorStop(1, "rgba(255,120,40,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(-90, -22, 48, 48);
+      }
+      ctx.restore();
+      if (aimK > 0.6 && phase === "aim") {
+        ctx.strokeStyle = `rgba(220,200,190,${(aimK - 0.6) * 1.6})`;
+        ctx.lineWidth = 1;
+        const x = Math.round(mx) + 0.5, y = Math.round(my) + 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x - 4, y); ctx.lineTo(x + 5, y);
+        ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 5);
+        ctx.stroke();
+      }
+    }
+
     function update(dt: number) {
       t += dt;
-      // approach, stop, then retreat
-      if (t < 7.2) camZ += 1.35 * dt; // walking in
-      else if (t < 9.6) camZ += 0.12 * dt; // frozen, watching it move
-      else camZ -= 1.9 * dt; // backing out, faster than she came
+      phaseT += dt;
+      aimK += ((aiming && phase === "aim" ? 1 : 0) - aimK) * Math.min(1, dt * 12);
+      flash = Math.max(0, flash - dt);
+      recoil = Math.max(0, recoil - dt * 6);
+      hitFx = Math.max(0, hitFx - dt);
 
-      let idx = -1;
-      for (let i = 0; i < BEATS.length; i++) if (t >= BEATS[i].at) idx = i;
-      if (idx !== shownBeat) {
-        shownBeat = idx;
-        setBeat(idx >= 0 ? BEATS[idx] : null);
-      }
-
-      if (t > TOTAL && !doneRef.current) {
-        doneRef.current = true;
-        onDone();
+      if (phase === "walk") {
+        camZ += 1.35 * dt;
+        if (t >= 8.6) { phase = "aim"; phaseT = 0; setBeat(AIM_BEAT); }
+        let idx = -1;
+        for (let i = 0; i < BEATS.length - 1; i++) if (t >= BEATS[i].at) idx = i;
+        if (idx !== shownBeat && phase === "walk") {
+          shownBeat = idx;
+          setBeat(idx >= 0 ? BEATS[idx] : null);
+        }
+      } else if (phase === "dead") {
+        let idx = -1;
+        for (let i = 0; i < DEAD_BEATS.length; i++) if (phaseT >= DEAD_BEATS[i].at) idx = i;
+        if (idx !== shownBeat) { shownBeat = idx; setBeat(idx >= 0 ? DEAD_BEATS[idx] : null); }
+        if (phaseT > 4.2) { phase = "leave"; phaseT = 0; }
+      } else if (phase === "leave") {
+        camZ -= 1.9 * dt;
+        if (phaseT > 3 && !doneRef.current) {
+          doneRef.current = true;
+          onDone();
+        }
       }
     }
 
     function render() {
       if (!ctx) return;
-      const walking = t < 7.2 || t > 9.6;
-      const sway = Math.sin(t * (walking ? 5.2 : 1.1)) * (walking ? 0.045 : 0.02);
+      const walking = phase === "walk" || phase === "leave";
+      const sway = Math.sin(t * (walking ? 5.2 : 1.1)) * (walking ? 0.045 : 0.02) * (1 - aimK * 0.8);
       ctx.fillStyle = "#040507";
       ctx.fillRect(0, 0, W, H);
       drawCorridor(sway);
+      const dk = deadK();
+      ctx.save();
+      ctx.globalAlpha = 1 - dk * 0.55;
       drawInfection(sway);
+      ctx.restore();
+      drawEye(sway);
       drawMotes(sway);
       drawAtmosphere();
+      if (flash > 0) {
+        ctx.fillStyle = `rgba(255,200,150,${flash * 2})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+      drawGun();
+      if (phase === "aim") {
+        ctx.fillStyle = "rgba(220,200,190,0.55)";
+        ctx.font = "7px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("[ desni klik ] nišani  ·  [ levi klik ] pucaj", CX, 18);
+      }
       if (t < 1) {
         ctx.fillStyle = `rgba(0,0,0,${1 - t})`;
         ctx.fillRect(0, 0, W, H);
       }
-      if (t > TOTAL - 1.4) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.min(1, (t - (TOTAL - 1.4)) / 1.4)})`;
+      if (phase === "leave" && phaseT > 1.6) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.min(1, (phaseT - 1.6) / 1.4)})`;
         ctx.fillRect(0, 0, W, H);
       }
     }
@@ -257,7 +418,13 @@ export default function ChaseCutscene({ onDone }: Props) {
     }
     raf = requestAnimationFrame(tick);
 
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("contextmenu", onCtx);
+    };
   }, [onDone]);
 
   return (
