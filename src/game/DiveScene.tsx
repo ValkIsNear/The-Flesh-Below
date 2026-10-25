@@ -517,10 +517,17 @@ export default function DiveScene({ onReach }: Props) {
       if (document.pointerLockElement === canvas) cam.yaw += e.movementX * 0.0022;
     };
     const onClick = () => canvas.requestPointerLock?.();
+    const aimingRef = { v: false };
+    const onMD = (e: MouseEvent) => { if (e.button === 2) aimingRef.v = true; };
+    const onMU = (e: MouseEvent) => { if (e.button === 2) aimingRef.v = false; };
+    const onCtx = (e: Event) => e.preventDefault();
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
     window.addEventListener("mousemove", onMouse);
     canvas.addEventListener("click", onClick);
+    window.addEventListener("mousedown", onMD);
+    window.addEventListener("mouseup", onMU);
+    window.addEventListener("contextmenu", onCtx);
 
     function toCam(p: V3): V3 {
       const dx = p.x - cam.x;
@@ -676,6 +683,8 @@ export default function DiveScene({ onReach }: Props) {
     // --- test: dread layer -------------------------------------------------
     let dreadTimer = 6 + rnd() * 8; // distant sound events from the dark
     let brownout = 0; // helmet lamp brownout seconds left
+    let aimK = 0;
+    let gunVis = 1;
     let brownoutTimer = 9 + rnd() * 10;
 
     function update(dt: number) {
@@ -978,13 +987,20 @@ export default function DiveScene({ onReach }: Props) {
       ctx.fillRect(0, 0, W, H);
 
 
-      // held weapon: lower-right, angled toward screen center, both hands
-      {
-        const sx = Math.sin(walkPhase * 0.5) * 3;
-        const sy = Math.abs(Math.cos(walkPhase * 0.5)) * 3 + Math.sin(time * 1.1) * 1;
+      // held weapon: lower-right hip, right-click raises it to center aim
+      aimK += ((aimingRef.v ? 1 : 0) - aimK) * Math.min(1, 1 / 60 * 12);
+      gunVis += ((brownout > 0 ? 0 : 1) - gunVis) * 0.25;
+      if (gunVis > 0.02) {
+        const sway = 1 - aimK * 0.75;
+        const sx = Math.sin(walkPhase * 0.5) * 3 * sway;
+        const sy = (Math.abs(Math.cos(walkPhase * 0.5)) * 3 + Math.sin(time * 1.1)) * sway;
+        const lerp = (a: number, b: number) => a + (b - a) * aimK;
         ctx.save();
-        ctx.translate(W * 0.62 + sx, H * 0.86 + sy);
-        ctx.rotate(-0.42);
+        ctx.globalAlpha = gunVis;
+        ctx.translate(lerp(W * 0.68, W * 0.5) + sx, lerp(H * 0.95, H * 1.08) + sy);
+        ctx.rotate(lerp(0.42, Math.PI / 2));
+        const sc = lerp(1.55, 1.75);
+        ctx.scale(sc, sc);
         const poly = (pts: number[][], fill: string) => {
           ctx.beginPath();
           ctx.moveTo(pts[0][0], pts[0][1]);
@@ -995,22 +1011,46 @@ export default function DiveScene({ onReach }: Props) {
         };
         // stock/body
         poly([[-10, 6], [60, -2], [70, 14], [-4, 30]], "#0c120e");
+        poly([[-10, 6], [60, -2], [61, 2], [-9, 10]], "#1a241d");
+        // receiver panel lines
+        for (let k = 0; k < 4; k++) poly([[8 + k * 12, 6 - k], [16 + k * 12, 5 - k], [17 + k * 12, 18 - k], [9 + k * 12, 19 - k]], "#101813");
+        // magazine
+        poly([[14, 22], [26, 20], [30, 44], [18, 46]], "#080c0a");
+        poly([[14, 22], [26, 20], [26, 23], [14, 25]], "#1c2620");
         // barrel shroud
         poly([[-46, -4], [10, -10], [14, 6], [-44, 10]], "#121a15");
         poly([[-46, -4], [10, -10], [10, -6], [-46, 0]], "#1e2a22");
-        // muzzle
+        // vent holes
+        for (let k = 0; k < 6; k++) poly([[-40 + k * 8, 1], [-35 + k * 8, 0], [-35 + k * 8, 4], [-40 + k * 8, 5]], "#050806");
+        // muzzle + brake
         poly([[-58, -3], [-46, -5], [-45, 9], [-57, 7]], "#070a08");
+        poly([[-64, -1], [-58, -2], [-57, 6], [-63, 5]], "#141c17");
         // top rail
-        for (let k = 0; k < 5; k++) poly([[-20 + k * 7, -11], [-15 + k * 7, -12], [-15 + k * 7, -8], [-20 + k * 7, -7]], "#26322a");
+        for (let k = 0; k < 8; k++) poly([[-34 + k * 7, -11], [-29 + k * 7, -12], [-29 + k * 7, -8], [-34 + k * 7, -7]], "#26322a");
+        // optic
+        poly([[-10, -12], [16, -15], [17, -22], [-9, -20]], "#0e1511");
+        poly([[-12, -19], [-8, -20], [-8, -12], [-12, -11]], "#2a3a30");
+        poly([[-11, -17], [-9, -17], [-9, -14], [-11, -14]], "rgba(110,170,120,0.55)");
         // dim green glow strip
         poly([[-40, 3], [6, -1], [6, 1], [-40, 5]], "rgba(90,140,100,0.35)");
         // grip
         poly([[30, 10], [42, 8], [48, 34], [34, 36]], "#0a0f0c");
-        // left hand on foregrip (gloved)
+        // left hand on foregrip (gloved) + knuckle plates
         poly([[-30, 6], [-14, 4], [-10, 22], [-22, 40], [-34, 30]], "#1a1614");
-        // right hand on grip
+        poly([[-28, 4], [-16, 3], [-16, 7], [-28, 8]], "#2a2420");
+        // right hand on grip + sleeve
         poly([[26, 14], [48, 12], [56, 36], [30, 44]], "#1c1816");
+        poly([[30, 44], [56, 36], [70, 70], [36, 80]], "#120e0d");
         ctx.restore();
+      }
+      if (aimK > 0.6) {
+        ctx.strokeStyle = `rgba(220,200,190,${(aimK - 0.6) * 1.6})`;
+        ctx.lineWidth = 1;
+        const cx = W / 2, cy = H / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - 5, cy + 0.5); ctx.lineTo(cx + 6, cy + 0.5);
+        ctx.moveTo(cx + 0.5, cy - 5); ctx.lineTo(cx + 0.5, cy + 6);
+        ctx.stroke();
       }
 
 
@@ -1045,6 +1085,9 @@ export default function DiveScene({ onReach }: Props) {
       window.removeEventListener("keydown", onDown);
       window.removeEventListener("keyup", onUp);
       window.removeEventListener("mousemove", onMouse);
+      window.removeEventListener("mousedown", onMD);
+      window.removeEventListener("mouseup", onMU);
+      window.removeEventListener("contextmenu", onCtx);
       canvas.removeEventListener("click", onClick);
       if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     };
