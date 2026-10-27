@@ -348,19 +348,48 @@ export default function ChaseCutscene({ onDone }: Props) {
       const hits = tg.hits;
       const rp = ((0.2 * (1 - dk * 0.5)) / z) * F;
       if (isCur) eyeScr = { x: c.sx, y: c.sy, r: rp };
-      const blink = 0.75 + 0.25 * Math.sin(t * 3.1);
-      ctx.fillStyle = `rgba(${Math.round(200 * (1 - dk) + 40 * dk)},${Math.round(20 + hitFx * 120)},28,${0.95 * (1 - fog(z))})`;
+      const blink = 0.8 + 0.2 * Math.sin(t * 3.1);
+      const vis = 0.95 * (1 - fog(z));
+      const ry = rp * blink * (1 - dk * 0.8);
+      ctx.save();
       ctx.beginPath();
-      ctx.ellipse(c.sx, c.sy, rp, rp * blink * (1 - dk * 0.8), 0, 0, Math.PI * 2);
-      ctx.fill();
-      // iris ring + slit pupil that follows the player
-      ctx.strokeStyle = `rgba(255,120,110,${0.6 * (1 - dk)})`;
+      ctx.ellipse(c.sx, c.sy, rp, ry, 0, 0, Math.PI * 2);
+      ctx.clip();
+      // pale fleshy sclera ring
+      const sg = ctx.createRadialGradient(c.sx, c.sy, rp * 0.2, c.sx, c.sy, rp);
+      sg.addColorStop(0, `rgba(${Math.round(230 - dk * 150)},${Math.round(190 - dk * 150 + hitFx * 40)},120,${vis})`);
+      sg.addColorStop(0.55, `rgba(${Math.round(170 - dk * 120)},${Math.round(120 - dk * 90)},90,${vis})`);
+      sg.addColorStop(1, `rgba(${Math.round(90 + hitFx * 140)},30,30,${vis})`);
+      ctx.fillStyle = sg;
+      ctx.fillRect(c.sx - rp, c.sy - rp, rp * 2, rp * 2);
+      // radial ridges like teeth around the iris
+      ctx.strokeStyle = `rgba(60,30,20,${0.7 * vis})`;
       ctx.lineWidth = 1;
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2 + Math.sin(t * 0.5) * 0.05;
+        ctx.beginPath();
+        ctx.moveTo(c.sx + Math.cos(a) * rp * 0.4, c.sy + Math.sin(a) * rp * 0.4);
+        ctx.lineTo(c.sx + Math.cos(a) * rp * 0.92, c.sy + Math.sin(a) * rp * 0.92);
+        ctx.stroke();
+      }
+      // yellow iris
+      const look = (mx - CX) * 0.01;
+      ctx.fillStyle = `rgba(${Math.round(220 - dk * 160)},${Math.round(170 - dk * 140)},60,${vis})`;
       ctx.beginPath();
-      ctx.arc(c.sx, c.sy, rp * 0.62, 0, Math.PI * 2);
+      ctx.arc(c.sx + look, c.sy, rp * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // dilating black pupil that follows the player
+      ctx.fillStyle = "rgba(4,1,2,0.97)";
+      ctx.beginPath();
+      ctx.arc(c.sx + look, c.sy, rp * (0.14 + 0.06 * Math.sin(t * 2)) * (1 - dk * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      // dark lid rim
+      ctx.strokeStyle = `rgba(10,4,8,${vis})`;
+      ctx.lineWidth = Math.max(1, rp * 0.12);
+      ctx.beginPath();
+      ctx.ellipse(c.sx, c.sy, rp, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.fillStyle = "rgba(8,2,4,0.95)";
-      ctx.fillRect(c.sx - rp * 0.08 + (mx - CX) * 0.01, c.sy - rp * 0.5, Math.max(1, rp * 0.16), rp);
       // wounds
       for (let i = 0; i < hits; i++) {
         ctx.fillStyle = "rgba(20,4,6,0.9)";
