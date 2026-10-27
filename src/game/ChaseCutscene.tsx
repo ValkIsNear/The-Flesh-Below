@@ -48,9 +48,12 @@ export default function ChaseCutscene({ onDone }: Props) {
       ph: Math.random() * Math.PI * 2,
     }));
 
+    // view offset: while aiming, the world pans so the crosshair stays centered
+    let offX = 0;
+    let offY = 0;
     function proj(x: number, y: number, z: number) {
       const d = Math.max(0.05, z);
-      return { sx: CX + (x / d) * F, sy: CY - (y / d) * F, s: F / d };
+      return { sx: CX + offX + (x / d) * F, sy: CY + offY - (y / d) * F, s: F / d };
     }
 
     function fog(z: number) {
@@ -231,25 +234,42 @@ export default function ChaseCutscene({ onDone }: Props) {
       mx = ((e.clientX - r.left) / r.width) * W;
       my = ((e.clientY - r.top) / r.height) * H;
     };
-    const onMove = (e: MouseEvent) => toCanvas(e);
+    const onMove = (e: MouseEvent) => {
+      toCanvas(e);
+      if (aiming && phase === "aim") {
+        const r = canvas.getBoundingClientRect();
+        const k = W / r.width;
+        offX = Math.max(-140, Math.min(140, offX - e.movementX * k * 0.6));
+        offY = Math.max(-80, Math.min(80, offY - e.movementY * k * 0.6));
+      }
+    };
     const onDown = (e: MouseEvent) => {
       toCanvas(e);
-      if (e.button === 2) aiming = true;
+      if (e.button === 2) {
+        aiming = true;
+        try { canvas.requestPointerLock?.(); } catch { /* ignore */ }
+      }
       if (e.button === 0 && phase === "aim") {
         flash = 0.08;
         recoil = 1;
         clang("hydraulic");
-        const tx = aimK > 0.5 ? mx : CX;
-        const ty = aimK > 0.5 ? my : CY;
-        if (Math.hypot(tx - eyeScr.x, ty - eyeScr.y) < eyeScr.r * 1.25) {
+        if (Math.hypot(CX - eyeScr.x, CY - eyeScr.y) < eyeScr.r * 1.25) {
           hits++;
           hitFx = 0.4;
           heartbeat();
-          if (hits >= 3) { phase = "dead"; phaseT = 0; shownBeat = -1; }
+          if (hits >= 3) {
+            phase = "dead"; phaseT = 0; shownBeat = -1; aiming = false;
+            if (document.pointerLockElement) document.exitPointerLock();
+          }
         }
       }
     };
-    const onUp = (e: MouseEvent) => { if (e.button === 2) aiming = false; };
+    const onUp = (e: MouseEvent) => {
+      if (e.button === 2) {
+        aiming = false;
+        if (document.pointerLockElement) document.exitPointerLock();
+      }
+    };
     const onCtx = (e: Event) => e.preventDefault();
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mousedown", onDown);
