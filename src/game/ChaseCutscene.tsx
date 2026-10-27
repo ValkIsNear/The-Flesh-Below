@@ -354,7 +354,7 @@ export default function ChaseCutscene({ onDone }: Props) {
       if (aimK > 0.6 && phase === "aim") {
         ctx.strokeStyle = `rgba(220,200,190,${(aimK - 0.6) * 1.6})`;
         ctx.lineWidth = 1;
-        const x = Math.round(mx) + 0.5, y = Math.round(my) + 0.5;
+        const x = CX + 0.5, y = CY + 0.5;
         ctx.beginPath();
         ctx.moveTo(x - 4, y); ctx.lineTo(x + 5, y);
         ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 5);
@@ -369,6 +369,7 @@ export default function ChaseCutscene({ onDone }: Props) {
       flash = Math.max(0, flash - dt);
       recoil = Math.max(0, recoil - dt * 6);
       hitFx = Math.max(0, hitFx - dt);
+      if (!aiming) { const d = Math.min(1, dt * 4); offX -= offX * d; offY -= offY * d; }
 
       if (phase === "walk") {
         camZ += 1.35 * dt;
@@ -444,6 +445,7 @@ export default function ChaseCutscene({ onDone }: Props) {
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("contextmenu", onCtx);
+      if (document.pointerLockElement) document.exitPointerLock();
     };
   }, [onDone]);
 
