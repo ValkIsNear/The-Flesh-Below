@@ -33,7 +33,14 @@ export default function ChaseCutscene({ onDone }: Props) {
     ctx.imageSmoothingEnabled = false;
 
     const TOTAL = 15.0;
-    const INF_Z = 15.5; // world depth of the infection
+    // growths along the tunnel; the player must shoot each eye
+    type Tgt = { x: number; y: number; z: number; hits: number; deadAt: number };
+    const targets: Tgt[] = [
+      { x: 1.35, y: -0.15, z: 15.5, hits: 0, deadAt: -1 },
+      { x: -1.35, y: 0.1, z: 25.5, hits: 0, deadAt: -1 },
+      { x: 1.3, y: 0.45, z: 35.5, hits: 0, deadAt: -1 },
+    ];
+    let cur = 0;
     let t = 0;
     let camZ = 0;
     let raf = 0;
@@ -104,16 +111,16 @@ export default function ChaseCutscene({ onDone }: Props) {
       }
     }
 
-    function drawInfection(sway: number) {
+    function drawInfection(sway: number, tg: Tgt) {
       if (!ctx) return;
-      const z = INF_Z - camZ;
+      const z = tg.z - camZ;
       if (z <= 0.35) return;
       const near = Math.max(0, Math.min(1, (10 - z) / 8)); // 0 far, 1 close
       const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
-      const alive = t > 7.4 ? 1 : 0; // the moment it answers the lamp
+      const alive = z < 5.5 ? 1 : 0; // the moment it answers the lamp
       // mass clinging to the right wall
-      const cx0 = 1.35 + sway;
-      const cy0 = -0.15;
+      const cx0 = tg.x + sway;
+      const cy0 = tg.y;
       const R = 0.62 + pulse * 0.05 + alive * 0.05;
 
       const c = proj(cx0, cy0, z);
@@ -227,6 +234,14 @@ export default function ChaseCutscene({ onDone }: Props) {
       { at: 0.4, sr: "Gotovo.", en: "It's done." },
       { at: 2.6, sr: "Ali ih ima još. Nazad.", en: "But there are more. Back away." },
     ];
+    const MORE_BEATS: Beat[] = [
+      { at: 0, sr: "Još jedno. Na levom zidu.", en: "Another one. On the left wall." },
+      { at: 0, sr: "Gore. I ovo me gleda.", en: "Up there. This one is watching too." },
+    ];
+    const MID_BEATS: Beat[] = [
+      { at: 0, sr: "Dalje.", en: "Keep going." },
+      { at: 0, sr: "Ima ih sve više.", en: "There are more of them." },
+    ];
     let eyeScr = { x: -999, y: -999, r: 0 };
 
     const toCanvas = (e: MouseEvent) => {
@@ -254,10 +269,12 @@ export default function ChaseCutscene({ onDone }: Props) {
         recoil = 1;
         clang("hydraulic");
         if (Math.hypot(CX - eyeScr.x, CY - eyeScr.y) < eyeScr.r * 1.25) {
-          hits++;
+          const tg = targets[cur];
+          tg.hits++;
           hitFx = 0.4;
           heartbeat();
-          if (hits >= 3) {
+          if (tg.hits >= 3) {
+            tg.deadAt = t;
             phase = "dead"; phaseT = 0; shownBeat = -1; aiming = false;
             if (document.pointerLockElement) document.exitPointerLock();
           }
@@ -276,16 +293,17 @@ export default function ChaseCutscene({ onDone }: Props) {
     window.addEventListener("mouseup", onUp);
     window.addEventListener("contextmenu", onCtx);
 
-    const deadK = () => (phase === "dead" || phase === "leave" ? Math.min(1, phaseT / 1.5) : 0);
+    const deadK = (tg: Tgt) => (tg.deadAt >= 0 ? Math.min(1, (t - tg.deadAt) / 1.5) : 0);
 
-    function drawEye(sway: number) {
+    function drawEye(sway: number, tg: Tgt, isCur: boolean) {
       if (!ctx) return;
-      const z = INF_Z - camZ;
+      const z = tg.z - camZ;
       if (z <= 0.35) return;
-      const c = proj(1.35 + sway, -0.15, z);
-      const dk = deadK();
+      const c = proj(tg.x + sway, tg.y, z);
+      const dk = deadK(tg);
+      const hits = tg.hits;
       const rp = ((0.2 * (1 - dk * 0.5)) / z) * F;
-      eyeScr = { x: c.sx, y: c.sy, r: rp };
+      if (isCur) eyeScr = { x: c.sx, y: c.sy, r: rp };
       const blink = 0.75 + 0.25 * Math.sin(t * 3.1);
       ctx.fillStyle = `rgba(${Math.round(200 * (1 - dk) + 40 * dk)},${Math.round(20 + hitFx * 120)},28,${0.95 * (1 - fog(z))})`;
       ctx.beginPath();
@@ -373,13 +391,16 @@ export default function ChaseCutscene({ onDone }: Props) {
 
       if (phase === "walk") {
         camZ += 1.35 * dt;
-        if (t >= 8.6) { phase = "aim"; phaseT = 0; setBeat(AIM_BEAT); }
+        if (camZ >= targets[cur].z - 3.9) { phase = "aim"; phaseT = 0; setBeat(cur === 0 ? AIM_BEAT : MORE_BEATS[cur - 1]); }
         let idx = -1;
         for (let i = 0; i < BEATS.length - 1; i++) if (t >= BEATS[i].at) idx = i;
-        if (idx !== shownBeat && phase === "walk") {
+        if (cur === 0 && idx !== shownBeat && phase === "walk") {
           shownBeat = idx;
           setBeat(idx >= 0 ? BEATS[idx] : null);
         }
+      } else if (phase === "dead" && cur < targets.length - 1) {
+        if (phaseT > 0.4 && shownBeat !== 99) { shownBeat = 99; setBeat(MID_BEATS[cur]); }
+        if (phaseT > 2.4) { cur++; phase = "walk"; phaseT = 0; setBeat(null); }
       } else if (phase === "dead") {
         let idx = -1;
         for (let i = 0; i < DEAD_BEATS.length; i++) if (phaseT >= DEAD_BEATS[i].at) idx = i;
@@ -401,12 +422,14 @@ export default function ChaseCutscene({ onDone }: Props) {
       ctx.fillStyle = "#040507";
       ctx.fillRect(0, 0, W, H);
       drawCorridor(sway);
-      const dk = deadK();
-      ctx.save();
-      ctx.globalAlpha = 1 - dk * 0.55;
-      drawInfection(sway);
-      ctx.restore();
-      drawEye(sway);
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const tg = targets[i];
+        ctx.save();
+        ctx.globalAlpha = 1 - deadK(tg) * 0.55;
+        drawInfection(sway, tg);
+        ctx.restore();
+        drawEye(sway, tg, i === cur);
+      }
       drawMotes(sway);
       drawAtmosphere();
       if (flash > 0) {
