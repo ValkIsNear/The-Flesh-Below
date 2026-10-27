@@ -115,63 +115,108 @@ export default function ChaseCutscene({ onDone }: Props) {
       if (!ctx) return;
       const z = tg.z - camZ;
       if (z <= 0.35) return;
-      const near = Math.max(0, Math.min(1, (10 - z) / 8)); // 0 far, 1 close
+      const vis = 1 - fog(z);
       const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
-      const alive = z < 5.5 ? 1 : 0; // the moment it answers the lamp
-      // mass clinging to the right wall
-      const cx0 = tg.x + sway;
-      const cy0 = tg.y;
-      const R = 0.62 + pulse * 0.05 + alive * 0.05;
+      const alive = z < 5.5 ? 1 : 0;
+      const seed = tg.z * 7.13;
+      const c = proj(tg.x + sway, tg.y, z);
+      const rp = ((0.6 + pulse * 0.05) / Math.max(0.05, z)) * F;
+      const side = tg.x > 0 ? 1 : -1; // grows out of the wall toward the corridor
 
-      const c = proj(cx0, cy0, z);
-      const rp = (R / Math.max(0.05, z)) * F;
-
-      // wet halo on the wall
-      const g = ctx.createRadialGradient(c.sx, c.sy, 1, c.sx, c.sy, rp * 2.1);
-      g.addColorStop(0, `rgba(70,10,18,${0.5 * (1 - fog(z))})`);
+      // tar stain soaking into the plating
+      const g = ctx.createRadialGradient(c.sx, c.sy, 1, c.sx, c.sy, rp * 2.4);
+      g.addColorStop(0, `rgba(10,4,10,${0.9 * vis})`);
+      g.addColorStop(0.6, `rgba(30,8,22,${0.4 * vis})`);
       g.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = g;
-      ctx.fillRect(c.sx - rp * 2.2, c.sy - rp * 2.2, rp * 4.4, rp * 4.4);
+      ctx.fillRect(c.sx - rp * 2.5, c.sy - rp * 2.5, rp * 5, rp * 5);
 
-      // lobed body
-      for (let i = 0; i < 7; i++) {
-        const ang = (i / 7) * Math.PI * 2 + Math.sin(t * 0.7 + i) * 0.2;
-        const lr = rp * (0.42 + 0.22 * Math.sin(t * 2.1 + i * 1.7));
-        const lx = c.sx + Math.cos(ang) * rp * 0.5;
-        const ly = c.sy + Math.sin(ang) * rp * 0.5;
-        ctx.fillStyle = shade([132, 26, 40], z, 0.95);
+      // thick trunk sliding down the wall into the water, like a tar worm
+      ctx.strokeStyle = `rgba(6,3,7,${0.95 * vis})`;
+      ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(1, rp * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(c.sx, c.sy);
+      ctx.bezierCurveTo(
+        c.sx + side * rp * 0.6, c.sy + rp * 0.9,
+        c.sx - side * rp * 0.5 + Math.sin(t * 0.8 + seed) * rp * 0.1, c.sy + rp * 1.5,
+        c.sx + side * rp * 0.2, c.sy + rp * 2.6,
+      );
+      ctx.stroke();
+
+      // glossy lobed body, black with a purple sheen
+      for (let i = 0; i < 9; i++) {
+        const ang = (i / 9) * Math.PI * 2 + Math.sin(t * 0.6 + i + seed) * 0.25;
+        const lr = rp * (0.32 + 0.14 * Math.sin(t * 1.8 + i * 1.9 + seed));
+        const lx = c.sx + Math.cos(ang) * rp * 0.45;
+        const ly = c.sy + Math.sin(ang) * rp * 0.4;
+        ctx.fillStyle = `rgba(${14 + (i % 3) * 6},6,${18 + (i % 2) * 10},${0.97 * vis})`;
         ctx.beginPath();
         ctx.arc(lx, ly, Math.max(1, lr), 0, Math.PI * 2);
         ctx.fill();
+        // wet highlight
+        ctx.fillStyle = `rgba(150,110,170,${0.22 * vis})`;
+        ctx.fillRect(lx - lr * 0.4, ly - lr * 0.6, Math.max(1, lr * 0.35), Math.max(1, lr * 0.12));
       }
-      ctx.fillStyle = shade([48, 8, 14], z, 0.95);
-      ctx.beginPath();
-      ctx.arc(c.sx, c.sy, Math.max(1, rp * 0.55), 0, Math.PI * 2);
-      ctx.fill();
 
-      // black tendrils crawling out over the plating
-      ctx.strokeStyle = `rgba(6,4,6,${0.85 * (1 - fog(z))})`;
-      ctx.lineWidth = Math.max(1, rp * 0.09);
-      for (let i = 0; i < 9; i++) {
-        const ang = (i / 9) * Math.PI * 2;
-        let px = c.sx;
-        let py = c.sy;
+      // long clawed limbs reaching off the wall, curling and grasping
+      for (let i = 0; i < 7; i++) {
+        const base = (i / 7) * Math.PI * 2 + seed;
+        const reach = rp * (1.1 + 0.4 * Math.sin(i * 3.1 + seed));
+        let px = c.sx + Math.cos(base) * rp * 0.4;
+        let py = c.sy + Math.sin(base) * rp * 0.35;
+        let ang = base;
+        let w = Math.max(1, rp * 0.16);
+        for (let k = 0; k < 5; k++) {
+          ang += (0.35 + Math.sin(t * (0.9 + alive * 1.4) + i * 1.7 + k) * 0.25) * (i % 2 ? 1 : -1);
+          const nx = px + Math.cos(ang) * reach * 0.22;
+          const ny = py + Math.sin(ang) * reach * 0.22;
+          ctx.strokeStyle = `rgba(8,4,9,${0.95 * vis})`;
+          ctx.lineWidth = w;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(nx, ny);
+          ctx.stroke();
+          px = nx; py = ny;
+          w = Math.max(1, w * 0.72);
+        }
+        // three hooked claws at the tip
+        ctx.lineWidth = 1;
+        for (let f = -1; f <= 1; f++) {
+          const fa = ang + f * 0.55;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          const fx = px + Math.cos(fa) * rp * 0.18;
+          const fy = py + Math.sin(fa) * rp * 0.18;
+          ctx.quadraticCurveTo(fx, fy, fx + Math.cos(fa + 1.2) * rp * 0.08, fy + Math.sin(fa + 1.2) * rp * 0.08);
+          ctx.stroke();
+        }
+      }
+
+      // tar drips hanging in the water
+      ctx.fillStyle = `rgba(6,3,7,${0.9 * vis})`;
+      for (let i = 0; i < 6; i++) {
+        const dx = c.sx + (i - 2.5) * rp * 0.28;
+        const len = rp * (0.4 + 0.5 * ((Math.sin(t * 0.7 + i * 2.2 + seed) + 1) / 2));
+        ctx.fillRect(dx, c.sy + rp * 0.3, Math.max(1, rp * 0.05), len);
         ctx.beginPath();
-        ctx.moveTo(px, py);
-        for (let k = 1; k <= 4; k++) {
-          const wob = Math.sin(t * (1.4 + alive * 1.6) + i * 2 + k) * rp * 0.16 * (1 + alive);
-          px += Math.cos(ang) * rp * 0.42 + wob * 0.4;
-          py += Math.sin(ang) * rp * 0.42 + wob;
-          ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-        // sparse yellow node, brighter once it wakes
-        if (i % 3 === 0) {
-          const glow = (0.25 + 0.75 * pulse) * (0.3 + near) * (0.4 + alive * 0.6);
-          ctx.fillStyle = `rgba(214,190,80,${Math.min(0.95, glow)})`;
-          const nr = Math.max(1, rp * 0.07);
-          ctx.fillRect(px - nr, py - nr, nr * 2, nr * 2);
-        }
+        ctx.arc(dx, c.sy + rp * 0.3 + len, Math.max(1, rp * 0.05), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // small wet eyes scattered over the mass, opening when it wakes
+      for (let i = 0; i < 5; i++) {
+        const a = seed * 1.3 + i * 2.4;
+        const ex = c.sx + Math.cos(a) * rp * 0.55;
+        const ey = c.sy + Math.sin(a) * rp * 0.45;
+        const open = Math.max(0, Math.sin(t * 1.3 + i * 1.9)) * (0.3 + alive * 0.7);
+        const er = Math.max(1, rp * 0.08);
+        ctx.fillStyle = `rgba(210,200,170,${0.85 * vis * open})`;
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, er, er * open, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(0,0,0,${vis * open})`;
+        ctx.fillRect(ex - er * 0.3 + (mx - CX) * 0.004, ey - er * 0.3, Math.max(1, er * 0.6), Math.max(1, er * 0.6));
       }
     }
 
