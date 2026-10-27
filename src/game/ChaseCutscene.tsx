@@ -225,7 +225,6 @@ export default function ChaseCutscene({ onDone }: Props) {
     let aiming = false;
     let aimK = 0;
     let mx = CX, my = CY;
-    let hits = 0;
     let flash = 0;
     let recoil = 0;
     let hitFx = 0;
