@@ -694,8 +694,9 @@ export default function DiveScene({ onReach }: Props) {
         strafe = 0;
       if (keys.has("arrowup") || keys.has("w")) fwd += 1;
       if (keys.has("arrowdown") || keys.has("s")) fwd -= 1;
-      if (keys.has("arrowleft") || keys.has("a")) turn -= 1;
-      if (keys.has("arrowright") || keys.has("d")) turn += 1;
+      // while aiming, A/D sidestep instead of turning so the aim stays put
+      if (keys.has("arrowleft") || keys.has("a")) { if (aimingRef.v) strafe -= 1; else turn -= 1; }
+      if (keys.has("arrowright") || keys.has("d")) { if (aimingRef.v) strafe += 1; else turn += 1; }
       if (keys.has("q")) strafe -= 1;
       if (keys.has("e")) strafe += 1;
 
