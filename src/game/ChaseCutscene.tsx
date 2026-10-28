@@ -204,6 +204,46 @@ export default function ChaseCutscene({ onDone }: Props) {
         ctx.fill();
       }
 
+      // raw red flesh rim where the growth meets the main eye
+      const throb = 0.5 + 0.5 * Math.sin(t * 3.2 + seed);
+      ctx.fillStyle = `rgba(${90 + throb * 50},14,18,${0.85 * vis})`;
+      ctx.beginPath();
+      ctx.ellipse(c.sx, c.sy, rp * 0.42, rp * 0.36, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // pulsing veins crawling outward over the tar
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 10; i++) {
+        let vx = c.sx, vy = c.sy;
+        let va = (i / 10) * Math.PI * 2 + seed;
+        ctx.strokeStyle = `rgba(${120 + throb * 70},20,30,${(0.35 + throb * 0.35) * vis})`;
+        ctx.beginPath();
+        ctx.moveTo(vx, vy);
+        for (let k = 0; k < 4; k++) {
+          va += Math.sin(i * 2.7 + k * 1.3 + seed) * 0.6;
+          vx += Math.cos(va) * rp * 0.28;
+          vy += Math.sin(va) * rp * 0.24;
+          ctx.lineTo(vx, vy);
+        }
+        ctx.stroke();
+      }
+
+      // cluster of tiny eyes huddled around the main one, all tracking her
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + seed * 0.7;
+        const d = rp * (0.32 + (i % 2) * 0.1);
+        const ex = c.sx + Math.cos(a) * d;
+        const ey = c.sy + Math.sin(a) * d * 0.85;
+        const er = Math.max(1, rp * (0.05 + (i % 3) * 0.015));
+        const open = 0.4 + 0.6 * Math.max(0, Math.sin(t * 2.1 + i * 0.9 + seed));
+        ctx.fillStyle = `rgba(225,190,110,${0.9 * vis})`;
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, er, er * open, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(0,0,0,${vis})`;
+        ctx.fillRect(ex - er * 0.25 + (mx - CX) * 0.003, ey - er * 0.25, Math.max(1, er * 0.5), Math.max(1, er * 0.5));
+      }
+
       // small wet eyes scattered over the mass, opening when it wakes
       for (let i = 0; i < 5; i++) {
         const a = seed * 1.3 + i * 2.4;
