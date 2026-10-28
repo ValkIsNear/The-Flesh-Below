@@ -305,7 +305,17 @@ export default function ChaseCutscene({ onDone }: Props) {
     }
 
     // ---- interactive kill: the first time the player fires ----
-    let phase: "walk" | "aim" | "dead" | "leave" = "walk";
+    let phase: "walk" | "aim" | "dead" | "leave" | "run" = "walk";
+    let runDist = 0, runSpeed = 0, sprint = false, wHeld = false, lastW = -9, stepT = 0, chaserT = 0, shake = 0, runFade = 0;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== "KeyW") return;
+      if (e.type === "keydown") {
+        if (!e.repeat) { if (t - lastW < 0.32) sprint = true; lastW = t; }
+        wHeld = true;
+      } else { wHeld = false; sprint = false; }
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKey);
     let phaseT = 0;
     let aiming = false;
     let aimK = 0;
@@ -335,6 +345,7 @@ export default function ChaseCutscene({ onDone }: Props) {
     };
     const onMove = (e: MouseEvent) => {
       toCanvas(e);
+      if (phase === "run") { shake = Math.min(1, shake + Math.abs(e.movementX) * 0.02); return; }
       if (aiming && phase === "aim") {
         const r = canvas.getBoundingClientRect();
         const k = W / r.width;
@@ -521,21 +532,36 @@ export default function ChaseCutscene({ onDone }: Props) {
         if (phaseT > 4.2) { phase = "leave"; phaseT = 0; }
       } else if (phase === "leave") {
         camZ -= 1.9 * dt;
-        if (phaseT > 3 && !doneRef.current) {
-          doneRef.current = true;
-          onDone();
+        if (phaseT > 2.2) {
+          phase = "run"; phaseT = 0; camZ = 200; aiming = false;
+          setBeat({ at: 0, sr: "Ne gledaj nazad. Beži.", en: "Don't look back. Run." });
+        }
+      } else if (phase === "run") {
+        const want = wHeld ? (sprint ? 3.4 : 1.4) : 0;
+        runSpeed += (want - runSpeed) * Math.min(1, dt * 5);
+        camZ += runSpeed * dt; runDist += runSpeed * dt;
+        shake = Math.max(0, shake - dt * 1.5);
+        offX = Math.sin(t * 40) * shake * 6; offY = Math.cos(t * 33) * shake * 3;
+        if (runSpeed > 0.3) { stepT -= dt * runSpeed; if (stepT <= 0) { stepT = 0.9; clang("step"); } }
+        // something wet and heavy is running behind her
+        chaserT -= dt;
+        if (chaserT <= 0) { chaserT = sprint ? 0.42 : 0.3; clang("hydraulic"); if (Math.random() < 0.3) heartbeat(); }
+        if (phaseT > 3 && phaseT < 3.2) setBeat(null);
+        if (runDist > 32) {
+          runFade += dt / 1.4;
+          if (runFade >= 1 && !doneRef.current) { doneRef.current = true; onDone(); }
         }
       }
     }
 
     function render() {
       if (!ctx) return;
-      const walking = phase === "walk" || phase === "leave";
-      const sway = Math.sin(t * (walking ? 5.2 : 1.1)) * (walking ? 0.045 : 0.02) * (1 - aimK * 0.8);
+      const walking = phase === "walk" || phase === "leave" || (phase === "run" && runSpeed > 0.3);
+      const sway = (phase === "run" ? Math.sin(t * (sprint ? 11 : 6)) * runSpeed * 0.03 : 0) + Math.sin(t * (walking ? 5.2 : 1.1)) * (walking ? 0.045 : 0.02) * (1 - aimK * 0.8);
       ctx.fillStyle = "#040507";
       ctx.fillRect(0, 0, W, H);
       drawCorridor(sway);
-      for (let i = targets.length - 1; i >= 0; i--) {
+      for (let i = targets.length - 1; i >= 0 && phase !== "run"; i--) {
         const tg = targets[i];
         ctx.save();
         ctx.globalAlpha = 1 - deadK(tg) * 0.55;
@@ -549,7 +575,21 @@ export default function ChaseCutscene({ onDone }: Props) {
         ctx.fillStyle = `rgba(255,200,150,${flash * 2})`;
         ctx.fillRect(0, 0, W, H);
       }
+      if (phase === "run") {
+        ctx.fillStyle = `rgba(120,0,0,${0.28 + Math.sin(t * 3) * 0.06})`;
+        ctx.fillRect(0, 0, W, H);
+      }
       drawGun();
+      if (phase === "run" && runDist < 32) {
+        ctx.textAlign = "center";
+        ctx.font = "bold 9px monospace";
+        ctx.fillStyle = `rgba(255,70,60,${0.6 + Math.sin(t * 9) * 0.4})`;
+        ctx.fillText("HITNO BEŽI ODAVDE!", CX, 20);
+        ctx.font = "6px monospace";
+        ctx.fillStyle = "rgba(230,200,190,0.75)";
+        ctx.fillText("[ W W ] dvaput pritisni W za trčanje", CX, 30);
+      }
+      if (runFade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, runFade)})`; ctx.fillRect(0, 0, W, H); }
       if (phase === "aim") {
         ctx.fillStyle = "rgba(220,200,190,0.55)";
         ctx.font = "7px monospace";
@@ -560,10 +600,11 @@ export default function ChaseCutscene({ onDone }: Props) {
         ctx.fillStyle = `rgba(0,0,0,${1 - t})`;
         ctx.fillRect(0, 0, W, H);
       }
-      if (phase === "leave" && phaseT > 1.6) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.min(1, (phaseT - 1.6) / 1.4)})`;
+      if (phase === "leave" && phaseT > 1.2) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.min(1, (phaseT - 1.2) / 0.8)})`;
         ctx.fillRect(0, 0, W, H);
       }
+      if (phase === "run" && phaseT < 0.6) { ctx.fillStyle = `rgba(0,0,0,${1 - phaseT / 0.6})`; ctx.fillRect(0, 0, W, H); }
     }
 
     function tick(now: number) {
@@ -581,6 +622,8 @@ export default function ChaseCutscene({ onDone }: Props) {
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("contextmenu", onCtx);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
       if (document.pointerLockElement) document.exitPointerLock();
     };
   }, [onDone]);
