@@ -1,3 +1,4 @@
+import { TitleTumors } from "./TitleTumors";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
   AIRLOCK_LINES,
@@ -113,6 +114,7 @@ function Title({ onStart, volume, setVolume }: { onStart: () => void; volume: nu
   return (
     <div className="sy-screen sy-title">
       <div ref={lightRef} className="sy-title-light" aria-hidden />
+      <TitleTumors />
       <div className="sy-title-inner">
         <div className="sy-mark">SY</div>
         <div className="sy-sub">The Heavy</div>

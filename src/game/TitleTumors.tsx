@@ -1,0 +1,95 @@
+import { useEffect, useRef } from "react";
+
+// Tar-like tumors with eyes around the title screen. Positions are fractions of the
+// screen (from the user's layout sketch). Green = mass with a big eye, yellow = lone eye.
+const MASSES: [number, number, number][] = [
+  [0.035, 0.05, 0.075], [0.17, 0.04, 0.04], [0.5, 0.0, 0.025], [0.69, 0.06, 0.14],
+  [0.965, 0.07, 0.085], [1.0, 0.3, 0.06], [0.0, 0.28, 0.035], [0.935, 0.54, 0.032],
+  [0.935, 0.77, 0.12], [0.03, 0.71, 0.042], [0.08, 0.9, 0.12], [0.635, 0.98, 0.1], [0.765, 0.97, 0.035],
+];
+const EYES: [number, number, number][] = [
+  [0.084, 0.192, 0.017], [0.287, 0.225, 0.016], [0.232, 0.83, 0.026], [0.233, 0.943, 0.023], [0.792, 0.758, 0.022],
+];
+
+export function TitleTumors() {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    if (!ctx) return;
+    let raf = 0, mx = -9999, my = -9999;
+    const heat = new Map<string, number>();
+    const onMove = (e: MouseEvent) => { const r = cv.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top; };
+    window.addEventListener("mousemove", onMove);
+
+    const eye = (x: number, y: number, r: number, key: string, t: number, dt: number) => {
+      const near = Math.hypot(mx - x, my - y) < r * 2.4 ? 1 : 0;
+      const h = (heat.get(key) ?? 0) + (near - (heat.get(key) ?? 0)) * Math.min(1, dt * 6);
+      heat.set(key, h);
+      // fleshy rim
+      ctx.fillStyle = `rgb(${120 + h * 80},${30 - h * 20},${30 - h * 20})`;
+      ctx.beginPath(); ctx.ellipse(x, y, r * 1.25, r * 1.05, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgb(${200 + h * 40},${170 - h * 140},${150 - h * 130})`;
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      // iris follows the cursor, flares red and contracts when near
+      const a = Math.atan2(my - y, mx - x), d = Math.min(r * 0.35, Math.hypot(mx - x, my - y) * 0.05);
+      const ix = x + Math.cos(a) * d, iy = y + Math.sin(a) * d;
+      ctx.fillStyle = `rgb(${210 + h * 45},${170 - h * 150},${30})`;
+      ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.arc(ix, iy, r * (0.28 - h * 0.14 + Math.sin(t * 2 + x) * 0.03), 0, Math.PI * 2); ctx.fill();
+    };
+
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      const t = now / 1000;
+      const W = (cv.width = cv.clientWidth), H = (cv.height = cv.clientHeight);
+      const S = Math.min(W, H) * 1.4;
+      ctx.clearRect(0, 0, W, H);
+      MASSES.forEach(([fx, fy, fr], i) => {
+        const x = fx * W, y = fy * H, r = fr * S;
+        // tar body with purple sheen + tendrils
+        ctx.strokeStyle = "#08060a"; ctx.lineCap = "round";
+        for (let k = 0; k < 7; k++) {
+          let ang = (k / 7) * Math.PI * 2 + i, px = x, py = y, w = r * 0.18;
+          ctx.beginPath(); ctx.moveTo(px, py);
+          for (let s = 0; s < 6; s++) {
+            ang += Math.sin(t * 0.9 + k + s + i) * 0.35;
+            px += Math.cos(ang) * r * 0.28; py += Math.sin(ang) * r * 0.28;
+            ctx.lineTo(px, py);
+          }
+          ctx.lineWidth = w; ctx.stroke();
+        }
+        const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+        g.addColorStop(0, "#2a1530"); g.addColorStop(0.6, "#0a060c"); g.addColorStop(1, "#020103");
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        for (let k = 0; k <= 24; k++) {
+          const a = (k / 24) * Math.PI * 2;
+          const rr = r * (0.85 + Math.sin(a * 5 + t * 1.3 + i) * 0.07);
+          k ? ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr) : ctx.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+        }
+        ctx.fill();
+        // red veins
+        ctx.strokeStyle = `rgba(140,20,25,${0.4 + Math.sin(t * 2 + i) * 0.2})`; ctx.lineWidth = 1;
+        for (let k = 0; k < 5; k++) {
+          const a = k * 1.3 + i;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(a + 0.4) * r * 0.5, y + Math.sin(a + 0.4) * r * 0.5, x + Math.cos(a) * r * 0.8, y + Math.sin(a) * r * 0.8); ctx.stroke();
+        }
+        eye(x, y, r * 0.32, "m" + i, t, dt);
+        if (r > 40) { eye(x + r * 0.5, y - r * 0.35, r * 0.1, "s" + i, t, dt); eye(x - r * 0.45, y + r * 0.4, r * 0.08, "t" + i, t, dt); }
+      });
+      EYES.forEach(([fx, fy, fr], i) => {
+        const x = fx * W, y = fy * H, r = fr * S;
+        ctx.fillStyle = "#050307"; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, Math.PI * 2); ctx.fill();
+        eye(x, y, r, "e" + i, t, dt);
+      });
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); window.removeEventListener("mousemove", onMove); };
+  }, []);
+  return <canvas ref={ref} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 1, pointerEvents: "none" }} />;
+}
