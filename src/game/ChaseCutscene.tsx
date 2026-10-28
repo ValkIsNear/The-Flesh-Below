@@ -260,6 +260,50 @@ export default function ChaseCutscene({ onDone }: Props) {
       }
     }
 
+    // Textured tunnel like the opening dive: solid walls, plank floor, hazard band, crates.
+    function drawRunCorridor(sway: number) {
+      if (!ctx) return;
+      const HW = 1.7, HH = 1.25, SL = 0.6;
+      const quad = (pts: { sx: number; sy: number }[], fill: string) => {
+        ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(pts[0].sx, pts[0].sy);
+        for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k].sx, pts[k].sy);
+        ctx.closePath(); ctx.fill();
+      };
+      for (let i = 34; i >= 0; i--) {
+        const z0 = i * SL + 0.25 - (camZ % SL), z1 = z0 + SL;
+        if (z0 <= 0.15) continue;
+        const band = Math.floor((camZ + z0) / SL);
+        const v = band % 3 === 0 ? 0.82 : band % 2 ? 1 : 0.92;
+        const P = (x: number, y: number, z: number) => proj(x + sway, y, z);
+        const col = (c: [number, number, number], z: number) => shade([c[0] * v, c[1] * v, c[2] * v], z);
+        quad([P(-HW, HH, z0), P(HW, HH, z0), P(HW, HH, z1), P(-HW, HH, z1)], col([70, 48, 46], z0));
+        quad([P(-HW, -HH, z0), P(HW, -HH, z0), P(HW, -HH, z1), P(-HW, -HH, z1)], col([96, 66, 54], z0));
+        for (const sd of [-1, 1]) {
+          const x = sd * HW;
+          quad([P(x, HH, z0), P(x, -HH, z0), P(x, -HH, z1), P(x, HH, z1)], col([88, 60, 56], z0));
+          // hazard stripe band
+          quad([P(x, -0.05, z0), P(x, -0.25, z0), P(x, -0.25, z1), P(x, -0.05, z1)], col(band % 2 ? [150, 110, 30] : [40, 30, 20], z0));
+          // rivets
+          if (band % 2 === 0) { const r = P(x * 0.98, 0.5, z0 + 0.1); ctx.fillStyle = shade([130, 100, 90], z0); ctx.fillRect(r.sx, r.sy, Math.max(1, 1.5 / z0), Math.max(1, 1.5 / z0)); }
+        }
+        // plank seams and wall frames
+        ctx.strokeStyle = shade([30, 20, 20], z0, 0.8); ctx.lineWidth = 1;
+        const a = P(-HW, HH, z0), b = P(HW, -HH, z0);
+        if (band % 4 === 0) ctx.strokeRect(a.sx, a.sy, b.sx - a.sx, b.sy - a.sy);
+        const fl = P(0, -HH, z0), fr = P(0, -HH, z1);
+        ctx.beginPath(); ctx.moveTo(fl.sx, fl.sy); ctx.lineTo(fr.sx, fr.sy); ctx.stroke();
+        // crates
+        if (band % 9 === 4) {
+          const cx = band % 2 ? 1.0 : -1.0, s2 = 0.55;
+          const f0 = [P(cx - s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH, z0), P(cx - s2 / 2, -HH, z0)];
+          quad([P(cx - s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH + s2, z0 + s2), P(cx - s2 / 2, -HH + s2, z0 + s2)], shade([150, 100, 50], z0));
+          quad(f0, shade([170, 112, 52], z0));
+          ctx.strokeStyle = shade([90, 55, 25], z0); ctx.lineWidth = Math.max(1, 2 / z0);
+          ctx.strokeRect(f0[0].sx, f0[0].sy, f0[1].sx - f0[0].sx, f0[2].sy - f0[0].sy);
+        }
+      }
+    }
+
     function drawMotes(sway: number) {
       if (!ctx) return;
       for (const m of motes) {
@@ -560,7 +604,7 @@ export default function ChaseCutscene({ onDone }: Props) {
       const sway = (phase === "run" ? Math.sin(t * (sprint ? 11 : 6)) * runSpeed * 0.03 : 0) + Math.sin(t * (walking ? 5.2 : 1.1)) * (walking ? 0.045 : 0.02) * (1 - aimK * 0.8);
       ctx.fillStyle = "#040507";
       ctx.fillRect(0, 0, W, H);
-      drawCorridor(sway);
+      if (phase === "run") drawRunCorridor(sway); else drawCorridor(sway);
       for (let i = targets.length - 1; i >= 0 && phase !== "run"; i--) {
         const tg = targets[i];
         ctx.save();
@@ -576,7 +620,7 @@ export default function ChaseCutscene({ onDone }: Props) {
         ctx.fillRect(0, 0, W, H);
       }
       if (phase === "run") {
-        ctx.fillStyle = `rgba(120,0,0,${0.28 + Math.sin(t * 3) * 0.06})`;
+        ctx.fillStyle = `rgba(90,0,0,${0.14 + Math.sin(t * 3) * 0.04})`;
         ctx.fillRect(0, 0, W, H);
       }
       drawGun();
