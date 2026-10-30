@@ -7,9 +7,9 @@ export type Line =
   | { kind: "sfx"; text: string };
 
 export const INTRO_EPIGRAPH = [
-  "Dole, pritisak ne lomi samo kost.",
-  "Melje smisao u prah,",
-  "odjek života kojeg se više ne sećaš.",
+  "Down below, pressure doesn't just break the bone.",
+  "It grinds meaning into dust,",
+  "the echo of a life you no longer remember.",
 ];
 
 export const INTRO_PROSE: Line[] = [
