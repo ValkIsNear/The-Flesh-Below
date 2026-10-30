@@ -10,6 +10,9 @@ const MASSES: [number, number, number][] = [
 const EYES: [number, number, number][] = [
   [0.084, 0.192, 0.017], [0.287, 0.225, 0.016], [0.232, 0.83, 0.026], [0.233, 0.943, 0.023], [0.792, 0.758, 0.022],
 ];
+// ring of eyes surrounding the center + more along the edges
+for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2 + 0.2; EYES.push([0.5 + Math.cos(a) * 0.36, 0.5 + Math.sin(a) * 0.42, 0.009 + (k % 3) * 0.004]); }
+for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2; EYES.push([0.5 + Math.cos(a) * 0.48, 0.5 + Math.sin(a) * 0.48, 0.012 + (k % 2) * 0.005]); }
 
 const PX = 4; // render at 1/4 res for chunky pixels
 
