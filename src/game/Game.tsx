@@ -116,7 +116,7 @@ function Title({ onStart, volume, setVolume }: { onStart: () => void; volume: nu
       <div ref={lightRef} className="sy-title-light" aria-hidden />
       <TitleTumors />
       <div className="sy-title-inner">
-        <div className="sy-mark">SY</div>
+        <div className="sy-mark">The Flesh Below</div>
         <div className="sy-sub">The Heavy</div>
         <div className="sy-epigraph">
           {INTRO_EPIGRAPH.map((l) => (
