@@ -11,8 +11,8 @@ const EYES: [number, number, number][] = [
   [0.084, 0.192, 0.017], [0.287, 0.225, 0.016], [0.232, 0.83, 0.026], [0.233, 0.943, 0.023], [0.792, 0.758, 0.022],
 ];
 // ring of eyes surrounding the center + more along the edges
-for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2 + 0.2; EYES.push([0.5 + Math.cos(a) * 0.27, 0.5 + Math.sin(a) * 0.33, 0.016 + (k % 3) * 0.006]); }
-for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2; EYES.push([0.5 + Math.cos(a) * 0.4, 0.5 + Math.sin(a) * 0.42, 0.02 + (k % 2) * 0.007]); }
+for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2 + 0.2; EYES.push([0.5 + Math.cos(a) * 0.27, 0.5 + Math.sin(a) * 0.33, 0.024 + (k % 3) * 0.008]); }
+for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2; EYES.push([0.5 + Math.cos(a) * 0.4, 0.5 + Math.sin(a) * 0.42, 0.03 + (k % 2) * 0.01]); }
 
 const PX = 4; // render at 1/4 res for chunky pixels
 
@@ -68,7 +68,7 @@ export function TitleTumors() {
         for (let k = 0; k < 9; k++) {
           let ang = (k / 9) * Math.PI * 2 + i, px = x, py = y;
           for (let s = 0; s < 10; s++) {
-            ang += Math.sin(t * 0.7 + k + s * 0.6 + i) * 0.3;
+            ang += Math.sin(t * 0.2 + k + s * 0.6 + i) * 0.3;
             const nx = px + Math.cos(ang) * r * 0.3, ny = py + Math.sin(ang) * r * 0.3;
             ctx.lineWidth = Math.max(1, r * 0.42 * (1 - s / 10));
             ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.stroke();
@@ -91,7 +91,7 @@ export function TitleTumors() {
           const a = k * 1.3 + i;
           ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(a + 0.4) * r * 0.5, y + Math.sin(a + 0.4) * r * 0.5, x + Math.cos(a) * r * 0.8, y + Math.sin(a) * r * 0.8); ctx.stroke();
         }
-        eye(x, y, r * 0.32, "m" + i, t, dt);
+        eye(x, y, r * 0.42, "m" + i, t, dt);
         if (r > 10) { eye(x + r * 0.5, y - r * 0.35, r * 0.1, "s" + i, t, dt); eye(x - r * 0.45, y + r * 0.4, r * 0.08, "t" + i, t, dt); }
       });
       EYES.forEach(([fx, fy, fr], i) => {
