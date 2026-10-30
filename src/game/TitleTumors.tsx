@@ -36,7 +36,7 @@ export function TitleTumors() {
 
     const eye = (x: number, y: number, r: number, key: string, t: number, dt: number) => {
       const near = Math.hypot(mx - x, my - y) < r * 2.4 + 30 ? 1 : 0;
-      const h = (heat.get(key) ?? 0) + (near - (heat.get(key) ?? 0)) * Math.min(1, dt * 6);
+      const h = (heat.get(key) ?? 0) + (near - (heat.get(key) ?? 0)) * Math.min(1, dt * 1.3);
       heat.set(key, h);
       // eyes sleep in the dark; light (cursor) wakes them in sick yellow
       const k = h;
@@ -48,7 +48,7 @@ export function TitleTumors() {
       ctx.fillStyle = `rgb(${30 + k * 170},${26 + k * 150},${18 + k * 40})`;
       ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
       if (k > 0.05) { ctx.shadowColor = `rgba(255,220,60,${k})`; ctx.shadowBlur = r * 1.5 * k; }
-      const a = Math.atan2(my - y, mx - x), d = Math.min(r * 0.35, Math.hypot(mx - x, my - y) * 0.05);
+      const a = Math.atan2(my - y, mx - x), d = Math.min(r * 0.35, Math.hypot(mx - x, my - y) * 0.05) * k;
       const ix = x + Math.cos(a) * d, iy = y + Math.sin(a) * d;
       ctx.fillStyle = `rgb(${40 + k * 215},${32 + k * 190},${8 + k * 20})`;
       ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, Math.PI * 2); ctx.fill();
