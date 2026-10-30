@@ -57,19 +57,20 @@ export function TitleTumors() {
       ctx.imageSmoothingEnabled = false;
       const S = Math.min(W, H) * 1.4;
       ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(0, 0, W, H);
       MASSES.forEach(([fx, fy, fr], i) => {
         const x = fx * W, y = fy * H, r = fr * S;
         // tar body with purple sheen + tendrils
         ctx.strokeStyle = "#08060a"; ctx.lineCap = "round";
-        for (let k = 0; k < 7; k++) {
-          let ang = (k / 7) * Math.PI * 2 + i, px = x, py = y, w = r * 0.18;
-          ctx.beginPath(); ctx.moveTo(px, py);
-          for (let s = 0; s < 6; s++) {
-            ang += Math.sin(t * 0.9 + k + s + i) * 0.35;
-            px += Math.cos(ang) * r * 0.28; py += Math.sin(ang) * r * 0.28;
-            ctx.lineTo(px, py);
+        for (let k = 0; k < 9; k++) {
+          let ang = (k / 9) * Math.PI * 2 + i, px = x, py = y;
+          for (let s = 0; s < 10; s++) {
+            ang += Math.sin(t * 0.7 + k + s * 0.6 + i) * 0.3;
+            const nx = px + Math.cos(ang) * r * 0.3, ny = py + Math.sin(ang) * r * 0.3;
+            ctx.lineWidth = Math.max(1, r * 0.42 * (1 - s / 10));
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(nx, ny); ctx.stroke();
+            px = nx; py = ny;
           }
-          ctx.lineWidth = Math.max(1, w); ctx.stroke();
         }
         const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
         g.addColorStop(0, "#2a1530"); g.addColorStop(0.6, "#0a060c"); g.addColorStop(1, "#020103");

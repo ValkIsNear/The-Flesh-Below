@@ -305,12 +305,12 @@ function Styles() {
         mix-blend-mode: multiply;
       }
       .sy-screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
-      .sy-title { background: radial-gradient(circle at 50% 40%, #1a0612 0%, #050306 70%); overflow: hidden; }
+      .sy-title { background: radial-gradient(circle at 50% 40%, #0d0309 0%, #020103 70%); overflow: hidden; }
       .sy-title-light {
         pointer-events: none; position: absolute; inset: 0; z-index: 1;
         background: radial-gradient(
           640px circle at var(--mx, 50%) var(--my, 50%),
-          rgba(255, 210, 170, 0.09) 0%,
+          rgba(255, 210, 170, 0.06) 0%,
           rgba(200, 80, 90, 0.05) 45%,
           rgba(0,0,0,0) 80%
         );
