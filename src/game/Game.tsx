@@ -116,8 +116,8 @@ function Title({ onStart, volume, setVolume }: { onStart: () => void; volume: nu
       <div ref={lightRef} className="sy-title-light" aria-hidden />
       <TitleTumors />
       <div className="sy-title-inner">
+        <div className="sy-sub sy-above">The Heavy</div>
         <div className="sy-mark">Flesh Below</div>
-        <div className="sy-sub">The Heavy</div>
         <div className="sy-epigraph">
           {INTRO_EPIGRAPH.map((l) => (
             <div key={l}>{l}</div>
@@ -324,6 +324,7 @@ function Styles() {
       }
       .sy-mark.sy-small { font-size: 64px; }
       .sy-sub { font-size: 13px; letter-spacing: 0.4em; color: #a08a78; margin-bottom: 28px; }
+      .sy-above { margin-bottom: 6px; }
       .sy-epigraph {
         font-style: italic; color: #8a7464; font-size: 14px; line-height: 1.8; margin: 18px 0 28px;
       }

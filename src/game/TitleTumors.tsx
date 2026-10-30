@@ -7,12 +7,18 @@ const MASSES: [number, number, number][] = [
   [0.965, 0.07, 0.085], [1.0, 0.3, 0.06], [0.0, 0.28, 0.035], [0.935, 0.54, 0.032],
   [0.935, 0.77, 0.12], [0.03, 0.71, 0.042], [0.08, 0.9, 0.12], [0.635, 0.98, 0.1], [0.765, 0.97, 0.035],
 ];
-const EYES: [number, number, number][] = [
-  [0.084, 0.192, 0.017], [0.287, 0.225, 0.016], [0.232, 0.83, 0.026], [0.233, 0.943, 0.023], [0.792, 0.758, 0.022],
-];
-// ring of eyes surrounding the center + more along the edges
-for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2 + 0.2; EYES.push([0.5 + Math.cos(a) * 0.27, 0.5 + Math.sin(a) * 0.33, 0.024 + (k % 3) * 0.008]); }
-for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2; EYES.push([0.5 + Math.cos(a) * 0.4, 0.5 + Math.sin(a) * 0.42, 0.03 + (k % 2) * 0.01]); }
+const EYES: [number, number, number][] = [];
+// only a few realistically large eyes; each one is ringed by a handful of small ones
+for (let c = 0; c < 4; c++) {
+  const cx = [0.08, 0.71, 0.9, 0.25][c], cy = [0.17, 0.11, 0.68, 0.86][c];
+  EYES.push([cx, cy, 0.05]);
+  for (let j = 0; j < 3; j++) {
+    const a = (j / 3) * Math.PI * 2 + c * 0.8;
+    let r = 0.014 + (j % 2) * 0.005;
+    if (EYES.length % 3 === 0) r *= 1.7; // every 3rd-4th eye grows ~70%
+    EYES.push([cx + Math.cos(a) * 0.055, cy + Math.sin(a) * 0.07, r]);
+  }
+}
 
 const PX = 4; // render at 1/4 res for chunky pixels
 
@@ -30,7 +36,7 @@ export function TitleTumors() {
 
     const eye = (x: number, y: number, r: number, key: string, t: number, dt: number) => {
       const near = Math.hypot(mx - x, my - y) < r * 2.4 + 30 ? 1 : 0;
-      const h = (heat.get(key) ?? 0) + (near - (heat.get(key) ?? 0)) * Math.min(1, dt * 6);
+      const h = (heat.get(key) ?? 0) + (near - (heat.get(key) ?? 0)) * Math.min(1, dt * 1.3);
       heat.set(key, h);
       // eyes sleep in the dark; light (cursor) wakes them in sick yellow
       const k = h;
@@ -42,7 +48,7 @@ export function TitleTumors() {
       ctx.fillStyle = `rgb(${30 + k * 170},${26 + k * 150},${18 + k * 40})`;
       ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
       if (k > 0.05) { ctx.shadowColor = `rgba(255,220,60,${k})`; ctx.shadowBlur = r * 1.5 * k; }
-      const a = Math.atan2(my - y, mx - x), d = Math.min(r * 0.35, Math.hypot(mx - x, my - y) * 0.05);
+      const a = Math.atan2(my - y, mx - x), d = Math.min(r * 0.35, Math.hypot(mx - x, my - y) * 0.05) * k;
       const ix = x + Math.cos(a) * d, iy = y + Math.sin(a) * d;
       ctx.fillStyle = `rgb(${40 + k * 215},${32 + k * 190},${8 + k * 20})`;
       ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, Math.PI * 2); ctx.fill();
