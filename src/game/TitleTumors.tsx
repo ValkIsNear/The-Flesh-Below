@@ -11,6 +11,8 @@ const EYES: [number, number, number][] = [
   [0.084, 0.192, 0.017], [0.287, 0.225, 0.016], [0.232, 0.83, 0.026], [0.233, 0.943, 0.023], [0.792, 0.758, 0.022],
 ];
 
+const PX = 4; // render at 1/4 res for chunky pixels
+
 export function TitleTumors() {
   const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
@@ -20,32 +22,39 @@ export function TitleTumors() {
     if (!ctx) return;
     let raf = 0, mx = -9999, my = -9999;
     const heat = new Map<string, number>();
-    const onMove = (e: MouseEvent) => { const r = cv.getBoundingClientRect(); mx = e.clientX - r.left; my = e.clientY - r.top; };
+    const onMove = (e: MouseEvent) => { const r = cv.getBoundingClientRect(); mx = (e.clientX - r.left) / PX; my = (e.clientY - r.top) / PX; };
     window.addEventListener("mousemove", onMove);
 
     const eye = (x: number, y: number, r: number, key: string, t: number, dt: number) => {
-      const near = Math.hypot(mx - x, my - y) < r * 2.4 ? 1 : 0;
+      const near = Math.hypot(mx - x, my - y) < r * 2.4 + 30 ? 1 : 0;
       const h = (heat.get(key) ?? 0) + (near - (heat.get(key) ?? 0)) * Math.min(1, dt * 6);
       heat.set(key, h);
-      // fleshy rim
-      ctx.fillStyle = `rgb(${120 + h * 80},${30 - h * 20},${30 - h * 20})`;
-      ctx.beginPath(); ctx.ellipse(x, y, r * 1.25, r * 1.05, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = `rgb(${200 + h * 40},${170 - h * 140},${150 - h * 130})`;
+      // eyes sleep in the dark; light (cursor) wakes them in sick yellow
+      const k = h;
+      ctx.fillStyle = `rgb(${18 + k * 70},${8 + k * 40},${10})`;
+      ctx.beginPath(); ctx.ellipse(x, y, r * 1.3, r * 1.08, 0, 0, Math.PI * 2); ctx.fill();
+      // ridged teeth-like rim
+      ctx.fillStyle = `rgb(${40 + k * 120},${30 + k * 100},${20 + k * 30})`;
+      for (let q = 0; q < 10; q++) { const a = (q / 10) * Math.PI * 2 + t * 0.2; ctx.fillRect(x + Math.cos(a) * r * 1.1 - 1, y + Math.sin(a) * r * 0.92 - 1, 2, 2); }
+      ctx.fillStyle = `rgb(${30 + k * 170},${26 + k * 150},${18 + k * 40})`;
       ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-      // iris follows the cursor, flares red and contracts when near
+      if (k > 0.05) { ctx.shadowColor = `rgba(255,220,60,${k})`; ctx.shadowBlur = r * 1.5 * k; }
       const a = Math.atan2(my - y, mx - x), d = Math.min(r * 0.35, Math.hypot(mx - x, my - y) * 0.05);
       const ix = x + Math.cos(a) * d, iy = y + Math.sin(a) * d;
-      ctx.fillStyle = `rgb(${210 + h * 45},${170 - h * 150},${30})`;
+      ctx.fillStyle = `rgb(${40 + k * 215},${32 + k * 190},${8 + k * 20})`;
       ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.shadowBlur = 0;
       ctx.fillStyle = "#000";
-      ctx.beginPath(); ctx.arc(ix, iy, r * (0.28 - h * 0.14 + Math.sin(t * 2 + x) * 0.03), 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ix, iy, Math.max(0.5, r * (0.3 - k * 0.18 + Math.sin(t * 2 + x) * 0.03)), 0, Math.PI * 2); ctx.fill();
+      if (k > 0.3) { ctx.fillStyle = `rgba(255,250,200,${k})`; ctx.fillRect(ix - r * 0.2, iy - r * 0.25, 1, 1); }
     };
 
     let last = performance.now();
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       const t = now / 1000;
-      const W = (cv.width = cv.clientWidth), H = (cv.height = cv.clientHeight);
+      const W = (cv.width = Math.ceil(cv.clientWidth / PX)), H = (cv.height = Math.ceil(cv.clientHeight / PX));
+      ctx.imageSmoothingEnabled = false;
       const S = Math.min(W, H) * 1.4;
       ctx.clearRect(0, 0, W, H);
       MASSES.forEach(([fx, fy, fr], i) => {
@@ -60,7 +69,7 @@ export function TitleTumors() {
             px += Math.cos(ang) * r * 0.28; py += Math.sin(ang) * r * 0.28;
             ctx.lineTo(px, py);
           }
-          ctx.lineWidth = w; ctx.stroke();
+          ctx.lineWidth = Math.max(1, w); ctx.stroke();
         }
         const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
         g.addColorStop(0, "#2a1530"); g.addColorStop(0.6, "#0a060c"); g.addColorStop(1, "#020103");
@@ -79,7 +88,7 @@ export function TitleTumors() {
           ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + Math.cos(a + 0.4) * r * 0.5, y + Math.sin(a + 0.4) * r * 0.5, x + Math.cos(a) * r * 0.8, y + Math.sin(a) * r * 0.8); ctx.stroke();
         }
         eye(x, y, r * 0.32, "m" + i, t, dt);
-        if (r > 40) { eye(x + r * 0.5, y - r * 0.35, r * 0.1, "s" + i, t, dt); eye(x - r * 0.45, y + r * 0.4, r * 0.08, "t" + i, t, dt); }
+        if (r > 10) { eye(x + r * 0.5, y - r * 0.35, r * 0.1, "s" + i, t, dt); eye(x - r * 0.45, y + r * 0.4, r * 0.08, "t" + i, t, dt); }
       });
       EYES.forEach(([fx, fy, fr], i) => {
         const x = fx * W, y = fy * H, r = fr * S;
@@ -91,5 +100,5 @@ export function TitleTumors() {
     raf = requestAnimationFrame(tick);
     return () => { cancelAnimationFrame(raf); window.removeEventListener("mousemove", onMove); };
   }, []);
-  return <canvas ref={ref} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 1, pointerEvents: "none" }} />;
+  return <canvas ref={ref} aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 1, pointerEvents: "none", imageRendering: "pixelated" }} />;
 }
