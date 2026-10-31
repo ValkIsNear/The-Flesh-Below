@@ -1094,7 +1094,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       canvas.removeEventListener("click", onClick);
       if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     };
-  }, [onReach]);
+  }, [onReach, direction]);
 
   return (
     <div style={{ position: "relative", width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" }}>
