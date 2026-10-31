@@ -1066,7 +1066,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       ctx.lineWidth = 1;
       ctx.strokeRect(6, 10, W - 12, H - 24);
 
-      if (!reachedRef.current && CORRIDOR_LEN - cam.z < 13) {
+      if (direction === "outbound" && !reachedRef.current && CORRIDOR_LEN - cam.z < 13) {
         ctx.fillStyle = "rgba(225,205,205,0.85)";
         ctx.font = "10px monospace";
         ctx.textAlign = "center";

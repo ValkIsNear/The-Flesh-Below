@@ -1,3 +1,3 @@
 # Current task
-- [ ] Replace the chase with the original tunnel, starting from its far end after the third tumor.
-- [ ] Verify the combat-to-return transition and normal walking.
+- [x] Replace the chase with the original tunnel, starting from its far end after the third tumor.
+- [x] Verify the combat-to-return transition and normal walking.
