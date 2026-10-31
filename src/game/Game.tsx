@@ -14,7 +14,7 @@ import { clang, heartbeat, setMasterVolume, startDrone, startMusic, stopDrone, s
 const DiveScene = lazy(() => import("./DiveScene"));
 const ChaseCutscene = lazy(() => import("./ChaseCutscene"));
 
-type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "morgue" | "credits";
+type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits";
 
 export default function Game() {
   const [scene, setScene] = useState<Scene>("title");
@@ -24,7 +24,7 @@ export default function Game() {
   useEffect(() => setMasterVolume(volume), [volume]);
 
   useEffect(() => {
-    if (scene === "dive") startDrone(0.8);
+    if (scene === "dive" || scene === "return") startDrone(0.8);
     else if (scene === "husk") startDrone(1);
     else if (scene === "airlock") startDrone(0.3);
     else stopDrone();
@@ -86,8 +86,16 @@ export default function Game() {
       )}
       {scene === "chase" && (
         <Suspense fallback={<LoadingPanel />}>
-          <ChaseCutscene onDone={() => setScene("morgue")} />
+          <ChaseCutscene onDone={() => setScene("return")} />
         </Suspense>
+      )}
+      {scene === "return" && (
+        <DiveFrame>
+          <Suspense fallback={<LoadingPanel />}>
+            <DiveScene direction="return" />
+          </Suspense>
+          <DiveHud />
+        </DiveFrame>
       )}
       {scene === "morgue" && <Reader title="The Morgue" lines={MORGUE_LINES} onDone={() => setScene("credits")} />}
       {scene === "credits" && <Credits onRestart={() => setScene("title")} />}

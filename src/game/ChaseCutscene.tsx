@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { clang, heartbeat } from "./audio";
 
-// Non-interactive scene: the same flooded first-person tunnel as the dive,
-// but here Tamara walks up to a growth on the wall that is clearly still
-// alive — it answers her light — and she decides to back out for her own good.
+// Three interactive tumor encounters, then a transition back to the original tunnel.
 type Props = { onDone: () => void };
 
 const W = 320;
@@ -32,7 +30,6 @@ export default function ChaseCutscene({ onDone }: Props) {
     if (!ctx) return;
     ctx.imageSmoothingEnabled = false;
 
-    const TOTAL = 15.0;
     // growths along the tunnel; the player must shoot each eye
     type Tgt = { x: number; y: number; z: number; hits: number; deadAt: number };
     const targets: Tgt[] = [
@@ -260,50 +257,6 @@ export default function ChaseCutscene({ onDone }: Props) {
       }
     }
 
-    // Textured tunnel like the opening dive: solid walls, plank floor, hazard band, crates.
-    function drawRunCorridor(sway: number) {
-      if (!ctx) return;
-      const HW = 1.7, HH = 1.25, SL = 0.6;
-      const quad = (pts: { sx: number; sy: number }[], fill: string) => {
-        ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(pts[0].sx, pts[0].sy);
-        for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k].sx, pts[k].sy);
-        ctx.closePath(); ctx.fill();
-      };
-      for (let i = 34; i >= 0; i--) {
-        const z0 = i * SL + 0.25 - (camZ % SL), z1 = z0 + SL;
-        if (z0 <= 0.15) continue;
-        const band = Math.floor((camZ + z0) / SL);
-        const v = band % 3 === 0 ? 0.82 : band % 2 ? 1 : 0.92;
-        const P = (x: number, y: number, z: number) => proj(x + sway, y, z);
-        const col = (c: [number, number, number], z: number) => shade([c[0] * v, c[1] * v, c[2] * v], z);
-        quad([P(-HW, HH, z0), P(HW, HH, z0), P(HW, HH, z1), P(-HW, HH, z1)], col([70, 48, 46], z0));
-        quad([P(-HW, -HH, z0), P(HW, -HH, z0), P(HW, -HH, z1), P(-HW, -HH, z1)], col([96, 66, 54], z0));
-        for (const sd of [-1, 1]) {
-          const x = sd * HW;
-          quad([P(x, HH, z0), P(x, -HH, z0), P(x, -HH, z1), P(x, HH, z1)], col([88, 60, 56], z0));
-          // hazard stripe band
-          quad([P(x, -0.05, z0), P(x, -0.25, z0), P(x, -0.25, z1), P(x, -0.05, z1)], col(band % 2 ? [150, 110, 30] : [40, 30, 20], z0));
-          // rivets
-          if (band % 2 === 0) { const r = P(x * 0.98, 0.5, z0 + 0.1); ctx.fillStyle = shade([130, 100, 90], z0); ctx.fillRect(r.sx, r.sy, Math.max(1, 1.5 / z0), Math.max(1, 1.5 / z0)); }
-        }
-        // plank seams and wall frames
-        ctx.strokeStyle = shade([30, 20, 20], z0, 0.8); ctx.lineWidth = 1;
-        const a = P(-HW, HH, z0), b = P(HW, -HH, z0);
-        if (band % 4 === 0) ctx.strokeRect(a.sx, a.sy, b.sx - a.sx, b.sy - a.sy);
-        const fl = P(0, -HH, z0), fr = P(0, -HH, z1);
-        ctx.beginPath(); ctx.moveTo(fl.sx, fl.sy); ctx.lineTo(fr.sx, fr.sy); ctx.stroke();
-        // crates
-        if (band % 9 === 4) {
-          const cx = band % 2 ? 1.0 : -1.0, s2 = 0.55;
-          const f0 = [P(cx - s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH, z0), P(cx - s2 / 2, -HH, z0)];
-          quad([P(cx - s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH + s2, z0), P(cx + s2 / 2, -HH + s2, z0 + s2), P(cx - s2 / 2, -HH + s2, z0 + s2)], shade([150, 100, 50], z0));
-          quad(f0, shade([170, 112, 52], z0));
-          ctx.strokeStyle = shade([90, 55, 25], z0); ctx.lineWidth = Math.max(1, 2 / z0);
-          ctx.strokeRect(f0[0].sx, f0[0].sy, f0[1].sx - f0[0].sx, f0[2].sy - f0[0].sy);
-        }
-      }
-    }
-
     function drawMotes(sway: number) {
       if (!ctx) return;
       for (const m of motes) {
@@ -349,17 +302,7 @@ export default function ChaseCutscene({ onDone }: Props) {
     }
 
     // ---- interactive kill: the first time the player fires ----
-    let phase: "walk" | "aim" | "dead" | "leave" | "run" = "walk";
-    let runDist = 0, runSpeed = 0, sprint = false, wHeld = false, lastW = -9, stepT = 0, chaserT = 0, shake = 0, runFade = 0;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.code !== "KeyW") return;
-      if (e.type === "keydown") {
-        if (!e.repeat) { if (t - lastW < 0.32) sprint = true; lastW = t; }
-        wHeld = true;
-      } else { wHeld = false; sprint = false; }
-    };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("keyup", onKey);
+    let phase: "walk" | "aim" | "dead" | "leave" = "walk";
     let phaseT = 0;
     let aiming = false;
     let aimK = 0;
@@ -389,7 +332,6 @@ export default function ChaseCutscene({ onDone }: Props) {
     };
     const onMove = (e: MouseEvent) => {
       toCanvas(e);
-      if (phase === "run") { shake = Math.min(1, shake + Math.abs(e.movementX) * 0.02); return; }
       if (aiming && phase === "aim") {
         const r = canvas.getBoundingClientRect();
         const k = W / r.width;
@@ -577,35 +519,22 @@ export default function ChaseCutscene({ onDone }: Props) {
       } else if (phase === "leave") {
         camZ -= 1.9 * dt;
         if (phaseT > 2.2) {
-          phase = "run"; phaseT = 0; camZ = 200; aiming = false;
-          setBeat({ at: 0, sr: "Ne gledaj nazad. Beži.", en: "Don't look back. Run." });
-        }
-      } else if (phase === "run") {
-        const want = wHeld ? (sprint ? 3.4 : 1.4) : 0;
-        runSpeed += (want - runSpeed) * Math.min(1, dt * 5);
-        camZ += runSpeed * dt; runDist += runSpeed * dt;
-        shake = Math.max(0, shake - dt * 1.5);
-        offX = Math.sin(t * 40) * shake * 6; offY = Math.cos(t * 33) * shake * 3;
-        if (runSpeed > 0.3) { stepT -= dt * runSpeed; if (stepT <= 0) { stepT = 0.9; clang("step"); } }
-        // something wet and heavy is running behind her
-        chaserT -= dt;
-        if (chaserT <= 0) { chaserT = sprint ? 0.42 : 0.3; clang("hydraulic"); if (Math.random() < 0.3) heartbeat(); }
-        if (phaseT > 3 && phaseT < 3.2) setBeat(null);
-        if (runDist > 32) {
-          runFade += dt / 1.4;
-          if (runFade >= 1 && !doneRef.current) { doneRef.current = true; onDone(); }
+          if (!doneRef.current) {
+            doneRef.current = true;
+            onDone();
+          }
         }
       }
     }
 
     function render() {
       if (!ctx) return;
-      const walking = phase === "walk" || phase === "leave" || (phase === "run" && runSpeed > 0.3);
-      const sway = (phase === "run" ? Math.sin(t * (sprint ? 11 : 6)) * runSpeed * 0.03 : 0) + Math.sin(t * (walking ? 5.2 : 1.1)) * (walking ? 0.045 : 0.02) * (1 - aimK * 0.8);
+      const walking = phase === "walk" || phase === "leave";
+      const sway = Math.sin(t * (walking ? 5.2 : 1.1)) * (walking ? 0.045 : 0.02) * (1 - aimK * 0.8);
       ctx.fillStyle = "#040507";
       ctx.fillRect(0, 0, W, H);
-      if (phase === "run") drawRunCorridor(sway); else drawCorridor(sway);
-      for (let i = targets.length - 1; i >= 0 && phase !== "run"; i--) {
+      drawCorridor(sway);
+      for (let i = targets.length - 1; i >= 0; i--) {
         const tg = targets[i];
         ctx.save();
         ctx.globalAlpha = 1 - deadK(tg) * 0.55;
@@ -619,21 +548,7 @@ export default function ChaseCutscene({ onDone }: Props) {
         ctx.fillStyle = `rgba(255,200,150,${flash * 2})`;
         ctx.fillRect(0, 0, W, H);
       }
-      if (phase === "run") {
-        ctx.fillStyle = `rgba(90,0,0,${0.14 + Math.sin(t * 3) * 0.04})`;
-        ctx.fillRect(0, 0, W, H);
-      }
       drawGun();
-      if (phase === "run" && runDist < 32) {
-        ctx.textAlign = "center";
-        ctx.font = "bold 9px monospace";
-        ctx.fillStyle = `rgba(255,70,60,${0.6 + Math.sin(t * 9) * 0.4})`;
-        ctx.fillText("HITNO BEŽI ODAVDE!", CX, 20);
-        ctx.font = "6px monospace";
-        ctx.fillStyle = "rgba(230,200,190,0.75)";
-        ctx.fillText("[ W W ] dvaput pritisni W za trčanje", CX, 30);
-      }
-      if (runFade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, runFade)})`; ctx.fillRect(0, 0, W, H); }
       if (phase === "aim") {
         ctx.fillStyle = "rgba(220,200,190,0.55)";
         ctx.font = "7px monospace";
@@ -648,7 +563,6 @@ export default function ChaseCutscene({ onDone }: Props) {
         ctx.fillStyle = `rgba(0,0,0,${Math.min(1, (phaseT - 1.2) / 0.8)})`;
         ctx.fillRect(0, 0, W, H);
       }
-      if (phase === "run" && phaseT < 0.6) { ctx.fillStyle = `rgba(0,0,0,${1 - phaseT / 0.6})`; ctx.fillRect(0, 0, W, H); }
     }
 
     function tick(now: number) {
@@ -666,8 +580,6 @@ export default function ChaseCutscene({ onDone }: Props) {
       window.removeEventListener("mousedown", onDown);
       window.removeEventListener("mouseup", onUp);
       window.removeEventListener("contextmenu", onCtx);
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("keyup", onKey);
       if (document.pointerLockElement) document.exitPointerLock();
     };
   }, [onDone]);
