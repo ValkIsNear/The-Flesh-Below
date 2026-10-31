@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Reuse DiveScene for both outbound and return exploration, with direction-dependent spawn and encounter handling; this keeps the tunnel geometry and textures identical in both visits.

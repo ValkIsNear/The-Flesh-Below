@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { clang, heartbeat } from "./audio";
+import { CORRIDOR_LENGTH, reachesStoryEncounter, tunnelStart, type TunnelDirection } from "./tunnel-flow";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
 // The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
 // suspended silt, and things drifting in the dark that used to be people.
-type Props = { onReach: () => void };
+type Props = { onReach?: () => void; direction?: TunnelDirection };
 
 const W = 480;
 const H = 270;
 const FOCAL = 300;
-const CORRIDOR_LEN = 96;
+const CORRIDOR_LEN = CORRIDOR_LENGTH;
 const HALF_W = 2.6;
 const CEIL = 3.2;
 const FOG_NEAR = 1.4;
@@ -19,7 +20,7 @@ const FOG = [2, 2, 4] as const;
 type V3 = { x: number; y: number; z: number; u?: number; w?: number };
 type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
 
-export default function DiveScene({ onReach }: Props) {
+export default function DiveScene({ onReach, direction = "outbound" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reachedRef = useRef(false);
   const [log, setLog] = useState<{ line: string; sub: string } | null>(null);
@@ -506,7 +507,8 @@ export default function DiveScene({ onReach }: Props) {
 
 
     // ---- camera / input ---------------------------------------------------
-    const cam = { x: 0, y: 1.62, z: 1.5, yaw: 0, bob: 0 };
+    const cam = { x: 0, y: 1.62, ...tunnelStart(direction), bob: 0 };
+    if (direction === "return") bodies.forEach((body) => { body.seen = true; });
     const keys = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
       keys.add(e.key.toLowerCase());
@@ -820,9 +822,9 @@ export default function DiveScene({ onReach }: Props) {
         }
       }
 
-      if (cam.z > CORRIDOR_LEN - 7 && !reachedRef.current) {
+      if (reachesStoryEncounter(direction, cam.z) && !reachedRef.current) {
         reachedRef.current = true;
-        onReach();
+        onReach?.();
       }
     }
 
