@@ -20,6 +20,19 @@ for (let c = 0; c < 4; c++) {
   }
 }
 
+// Layers of smaller watchers fill the darkness without adding more giant eyes.
+for (let ring = 0; ring < 3; ring++) {
+  const count = 28 + ring * 10;
+  for (let j = 0; j < count; j++) {
+    const a = (j / count) * Math.PI * 2 + ring * 0.23;
+    const wobble = Math.sin(j * 2.7 + ring) * 0.018;
+    const rx = 0.29 + ring * 0.085 + wobble;
+    const ry = 0.30 + ring * 0.085 - wobble;
+    const r = (0.006 + (j % 4) * 0.002) * (j % 3 === 0 ? 1.7 : 1);
+    EYES.push([0.5 + Math.cos(a) * rx, 0.5 + Math.sin(a) * ry, r]);
+  }
+}
+
 const PX = 4; // render at 1/4 res for chunky pixels
 
 export function TitleTumors() {
@@ -43,14 +56,14 @@ export function TitleTumors() {
       ctx.fillStyle = `rgb(${18 + k * 70},${8 + k * 40},${10})`;
       ctx.beginPath(); ctx.ellipse(x, y, r * 1.3, r * 1.08, 0, 0, Math.PI * 2); ctx.fill();
       // ridged teeth-like rim
-      ctx.fillStyle = `rgb(${40 + k * 120},${30 + k * 100},${20 + k * 30})`;
+      ctx.fillStyle = `rgb(${29 + k * 131},${25 + k * 105},${15 + k * 35})`;
       for (let q = 0; q < 10; q++) { const a = (q / 10) * Math.PI * 2 + t * 0.2; ctx.fillRect(x + Math.cos(a) * r * 1.1 - 1, y + Math.sin(a) * r * 0.92 - 1, 2, 2); }
-      ctx.fillStyle = `rgb(${30 + k * 170},${26 + k * 150},${18 + k * 40})`;
+      ctx.fillStyle = `rgb(${25 + k * 175},${23 + k * 153},${14 + k * 44})`;
       ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0, 0, Math.PI * 2); ctx.fill();
       if (k > 0.05) { ctx.shadowColor = `rgba(255,220,60,${k})`; ctx.shadowBlur = r * 1.5 * k; }
       const a = Math.atan2(my - y, mx - x), d = Math.min(r * 0.35, Math.hypot(mx - x, my - y) * 0.05) * k;
       const ix = x + Math.cos(a) * d, iy = y + Math.sin(a) * d;
-      ctx.fillStyle = `rgb(${40 + k * 215},${32 + k * 190},${8 + k * 20})`;
+      ctx.fillStyle = `rgb(${37 + k * 218},${32 + k * 190},${10 + k * 18})`;
       ctx.beginPath(); ctx.arc(ix, iy, r * 0.5, 0, Math.PI * 2); ctx.fill();
       ctx.shadowBlur = 0;
       ctx.fillStyle = "#000";
@@ -102,7 +115,11 @@ export function TitleTumors() {
       });
       EYES.forEach(([fx, fy, fr], i) => {
         const x = fx * W, y = fy * H, r = fr * S;
-        ctx.fillStyle = "#050307"; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, Math.PI * 2); ctx.fill();
+        // The inner layer stays behind the lettering, the outer layers crowd the edges.
+        const title = cv.parentElement?.querySelector(".sy-title-inner");
+        const bounds = title?.getBoundingClientRect();
+        const canvasBounds = cv.getBoundingClientRect();
+        if (i >= 16 && bounds && x > (bounds.left - canvasBounds.left - 12) / PX && x < (bounds.right - canvasBounds.left + 12) / PX && y > (bounds.top - canvasBounds.top - 12) / PX && y < (bounds.bottom - canvasBounds.top + 12) / PX) return;
         eye(x, y, r, "e" + i, t, dt);
       });
       raf = requestAnimationFrame(tick);
