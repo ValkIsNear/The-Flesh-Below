@@ -1,3 +1,5 @@
 # Current task
-- [x] Replace the chase with the original tunnel, starting from its far end after the third tumor.
-- [x] Verify the combat-to-return transition and normal walking.
+- [ ] Connect the return corridor exit to the existing morgue dialogue.
+- [ ] Add return-only double-W sprinting and shooting.
+- [ ] Transform exactly two floating remains into tumor-like growths; add sparse eyes to the others.
+- [ ] Test the rules and play through the return into the morgue.

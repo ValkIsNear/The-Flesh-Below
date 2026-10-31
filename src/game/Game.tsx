@@ -92,7 +92,7 @@ export default function Game() {
       {scene === "return" && (
         <DiveFrame>
           <Suspense fallback={<LoadingPanel />}>
-            <DiveScene direction="return" />
+            <DiveScene direction="return" onReach={() => setScene("morgue")} />
           </Suspense>
           <DiveHud />
         </DiveFrame>
