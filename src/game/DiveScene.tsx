@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { clang, heartbeat } from "./audio";
-import { CORRIDOR_LENGTH, reachesStoryEncounter, tunnelStart, type TunnelDirection } from "./tunnel-flow";
+import { CORRIDOR_LENGTH, reachesStoryEncounter, tunnelStart, canShoot, doubleTapSprint, walkSpeed, TRANSFORMED_REMAINS, type TunnelDirection } from "./tunnel-flow";
+import { drawReturnGrowth, type ReturnEye } from "./return-growth";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
 // The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
@@ -509,18 +510,48 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
     // ---- camera / input ---------------------------------------------------
     const cam = { x: 0, y: 1.62, ...tunnelStart(direction), bob: 0 };
     if (direction === "return") bodies.forEach((body) => { body.seen = true; });
+    const returnRemains = [...bodies, ...strays].map((body, index) => ({
+      body, index, growth: 0, hits: 0,
+      transforms: TRANSFORMED_REMAINS.some((i) => i === index),
+    }));
+    let sprint = false, lastW = -Infinity, pitch = 0;
+    let shotFlash = 0, recoil = 0, shotCooldown = 0, hitFlash = 0;
+    let returnEyes: ReturnEye[] = [];
     const keys = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
+      if (e.code === "KeyW" && !e.repeat) {
+        const now = performance.now();
+        sprint = doubleTapSprint(direction, lastW, now, e.repeat);
+        lastW = now;
+      }
       keys.add(e.key.toLowerCase());
       if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(e.key.toLowerCase())) e.preventDefault();
     };
-    const onUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase());
+    const onUp = (e: KeyboardEvent) => {
+      keys.delete(e.key.toLowerCase());
+      if (e.code === "KeyW") sprint = false;
+    };
     const onMouse = (e: MouseEvent) => {
-      if (document.pointerLockElement === canvas) cam.yaw += e.movementX * 0.0022;
+      if (document.pointerLockElement === canvas) {
+        cam.yaw += e.movementX * 0.0022;
+        if (direction === "return") pitch = Math.max(-0.55, Math.min(0.55, pitch - e.movementY * 0.0022));
+      }
     };
     const onClick = () => canvas.requestPointerLock?.();
     const aimingRef = { v: false };
-    const onMD = (e: MouseEvent) => { if (e.button === 2) aimingRef.v = true; };
+    const onMD = (e: MouseEvent) => {
+      if (e.target !== canvas && document.pointerLockElement !== canvas) return;
+      if (e.button === 2) { aimingRef.v = true; canvas.requestPointerLock?.(); }
+      if (e.button !== 0 || !canShoot(direction) || shotCooldown > 0) return;
+      shotCooldown = 0.22; shotFlash = 0.08; recoil = 1;
+      clang("hydraulic");
+      const hit = [...returnEyes].sort((a,b) => a.depth - b.depth).find((eye) =>
+        Math.hypot(eye.x - W / 2, eye.y - H / 2) <= Math.max(3, eye.r * 1.25));
+      if (hit) {
+        const target = returnRemains[hit.index];
+        if (target && target.hits < 3) { target.hits++; hitFlash = 0.16; heartbeat(); }
+      }
+    };
     const onMU = (e: MouseEvent) => { if (e.button === 2) aimingRef.v = false; };
     const onCtx = (e: Event) => e.preventDefault();
     window.addEventListener("keydown", onDown);
@@ -538,7 +569,8 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         s = Math.sin(-cam.yaw);
       // negate x: yaw convention is left-handed, otherwise the world mirrors
       // and forced looks snap to the opposite side of the corridor
-      return { x: -(dx * c - dz * s), y: p.y - (cam.y + cam.bob), z: dx * s + dz * c, u: p.u, w: p.w };
+      const cy = p.y - (cam.y + cam.bob), cz = dx * s + dz * c;
+      return { x: -(dx * c - dz * s), y: cy * Math.cos(pitch) - cz * Math.sin(pitch), z: cy * Math.sin(pitch) + cz * Math.cos(pitch), u: p.u, w: p.w };
     }
     const NEAR = 0.2;
     function clipNear(v: V3[]): V3[] {
@@ -691,6 +723,17 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
 
     function update(dt: number) {
       time += dt;
+      shotCooldown = Math.max(0, shotCooldown - dt);
+      shotFlash = Math.max(0, shotFlash - dt);
+      recoil = Math.max(0, recoil - dt * 6);
+      hitFlash = Math.max(0, hitFlash - dt);
+      if (direction === "return") {
+        for (const rem of returnRemains) {
+          if (rem.transforms && rem.hits < 3 && Math.hypot(rem.body.x - cam.x, rem.body.z - cam.z) < 10) {
+            rem.growth = Math.min(1, rem.growth + dt * 0.3);
+          }
+        }
+      }
       let fwd = 0,
         turn = 0,
         strafe = 0;
@@ -755,7 +798,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       }
 
       cam.yaw += turn * 1.7 * dt;
-      const sp = 2.7;
+      const sp = walkSpeed(direction, sprint, fwd, aimingRef.v);
       // The renderer mirrors camera-space X, so world X motion is negated to
       // keep W walking toward whatever the player is actually looking at.
       cam.z += Math.cos(cam.yaw) * fwd * sp * dt - Math.sin(cam.yaw) * strafe * sp * 0.7 * dt;
@@ -766,10 +809,10 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
 
       const moving = fwd !== 0 || strafe !== 0;
       if (moving) {
-        walkPhase += dt * 5.4;
+        walkPhase += dt * 5.4 * (sp / 2.7);
         cam.bob = Math.sin(walkPhase) * 0.045;
         stepTimer += dt;
-        const interval = stepFlip === 0 ? 0.4 : 0.62;
+        const interval = (stepFlip === 0 ? 0.4 : 0.62) * (2.7 / sp);
         if (stepTimer > interval) {
           stepTimer = 0;
           stepFlip = (stepFlip + 1) % 2;
@@ -839,6 +882,20 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       for (const b of bodies) bodyPolys(dyn, b, time);
       for (const s of strays) bodyPolys(dyn, s, time);
       drawPolys([...level, ...dyn]);
+      returnEyes = [];
+      if (direction === "return") {
+        const visible = returnRemains.map((rem) => {
+          const b = rem.body;
+          const p = toCam({ x: b.x + Math.sin(time * 0.33 + b.phase) * 0.06, y: b.y + 0.12 + Math.sin(time * 0.5 + b.phase) * 0.09, z: b.z });
+          return { rem, p };
+        }).filter(({ p }) => p.z > 0.4 && p.z < 10).sort((a,b) => b.p.z - a.p.z);
+        for (const { rem, p } of visible) {
+          const point = proj(p);
+          const eye: ReturnEye = { x: point.x, y: point.y, r: FOCAL * (rem.transforms ? 0.17 : 0.075) / p.z, depth: p.z, index: rem.index };
+          drawReturnGrowth(ctx, eye, time + rem.body.phase, rem.transforms ? rem.growth : 0, rem.hits);
+          if (rem.hits < 3) returnEyes.push(eye);
+        }
+      }
 
       // black tendrils growing out of the remains, with glimmering yellow nodes
       for (const t of tendrils) {
@@ -1000,7 +1057,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         const lerp = (a: number, b: number) => a + (b - a) * aimK;
         ctx.save();
         ctx.globalAlpha = gunVis;
-        ctx.translate(lerp(W * 0.68, W * 0.5) + sx, lerp(H * 0.95, H * 1.08) + sy);
+        ctx.translate(lerp(W * 0.68, W * 0.5) + sx, lerp(H * 0.95, H * 1.08) + sy + recoil * 9);
         ctx.rotate(lerp(0.42, Math.PI / 2));
         const sc = lerp(1.55, 1.75);
         ctx.scale(sc, sc);
@@ -1054,6 +1111,17 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         ctx.moveTo(cx - 5, cy + 0.5); ctx.lineTo(cx + 6, cy + 0.5);
         ctx.moveTo(cx + 0.5, cy - 5); ctx.lineTo(cx + 0.5, cy + 6);
         ctx.stroke();
+      }
+      if (shotFlash > 0) {
+        ctx.fillStyle = `rgba(255,200,150,${shotFlash * 2})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+      if (hitFlash > 0) {
+        ctx.strokeStyle = "#b95350"; ctx.lineWidth = 1;
+        ctx.beginPath();ctx.moveTo(W/2-8,H/2-8);ctx.lineTo(W/2-4,H/2-4);
+        ctx.moveTo(W/2+8,H/2-8);ctx.lineTo(W/2+4,H/2-4);
+        ctx.moveTo(W/2-8,H/2+8);ctx.lineTo(W/2-4,H/2+4);
+        ctx.moveTo(W/2+8,H/2+8);ctx.lineTo(W/2+4,H/2+4);ctx.stroke();
       }
 
 
