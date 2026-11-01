@@ -737,15 +737,12 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         }
       }
       let fwd = 0,
-        turn = 0,
         strafe = 0;
       if (keys.has("arrowup") || keys.has("w")) fwd += 1;
       if (keys.has("arrowdown") || keys.has("s")) fwd -= 1;
-      // while aiming, A/D sidestep instead of turning so the aim stays put
-      if (keys.has("arrowleft") || keys.has("a")) { if (aimingRef.v) strafe -= 1; else turn -= 1; }
-      if (keys.has("arrowright") || keys.has("d")) { if (aimingRef.v) strafe += 1; else turn += 1; }
-      if (keys.has("q")) strafe -= 1;
-      if (keys.has("e")) strafe += 1;
+      // WASD is movement only — the camera turns with the mouse alone
+      if (keys.has("arrowleft") || keys.has("a")) strafe -= 1;
+      if (keys.has("arrowright") || keys.has("d")) strafe += 1;
 
       // notice the remains only once we are right next to them
       for (const b of bodies) {
