@@ -773,7 +773,6 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         // opposite horizontal sign to center the actual body on screen.
         focusYaw = Math.atan2(-dx, dz);
         // freeze the player while the remains hold her attention
-        turn = 0;
         fwd = 0;
         strafe = 0;
         let d = focusYaw - cam.yaw;
@@ -788,7 +787,6 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       } else if (returnT > 0) {
 
         returnT -= dt;
-        turn = 0;
         let d = returnYaw - cam.yaw;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
@@ -796,7 +794,6 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         if (returnT <= 0) cam.yaw = returnYaw;
       }
 
-      cam.yaw += turn * 1.7 * dt;
       const sp = walkSpeed(direction, sprint, fwd, aimingRef.v);
       // The renderer mirrors camera-space X, so world X motion is negated to
       // keep W walking toward whatever the player is actually looking at.
