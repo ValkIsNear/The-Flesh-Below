@@ -265,7 +265,7 @@ function DiveHud() {
         <span>PRESSURE 800 atm</span>
         <span>O₂ 47%</span>
       </div>
-      <div className="sy-hud-hint">WASD / strelice — kreći · interact at the body</div>
+      <div className="sy-hud-hint">WASD — kretanje · miš — pogled · desni klik — nišan</div>
     </div>
   );
 }

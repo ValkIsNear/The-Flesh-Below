@@ -737,15 +737,12 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         }
       }
       let fwd = 0,
-        turn = 0,
         strafe = 0;
       if (keys.has("arrowup") || keys.has("w")) fwd += 1;
       if (keys.has("arrowdown") || keys.has("s")) fwd -= 1;
-      // while aiming, A/D sidestep instead of turning so the aim stays put
-      if (keys.has("arrowleft") || keys.has("a")) { if (aimingRef.v) strafe -= 1; else turn -= 1; }
-      if (keys.has("arrowright") || keys.has("d")) { if (aimingRef.v) strafe += 1; else turn += 1; }
-      if (keys.has("q")) strafe -= 1;
-      if (keys.has("e")) strafe += 1;
+      // WASD is movement only — the camera turns with the mouse alone
+      if (keys.has("arrowleft") || keys.has("a")) strafe -= 1;
+      if (keys.has("arrowright") || keys.has("d")) strafe += 1;
 
       // notice the remains only once we are right next to them
       for (const b of bodies) {
@@ -776,7 +773,6 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         // opposite horizontal sign to center the actual body on screen.
         focusYaw = Math.atan2(-dx, dz);
         // freeze the player while the remains hold her attention
-        turn = 0;
         fwd = 0;
         strafe = 0;
         let d = focusYaw - cam.yaw;
@@ -791,7 +787,6 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       } else if (returnT > 0) {
 
         returnT -= dt;
-        turn = 0;
         let d = returnYaw - cam.yaw;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
@@ -799,7 +794,6 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         if (returnT <= 0) cam.yaw = returnYaw;
       }
 
-      cam.yaw += turn * 1.7 * dt;
       const sp = walkSpeed(direction, sprint, fwd, aimingRef.v);
       // The renderer mirrors camera-space X, so world X motion is negated to
       // keep W walking toward whatever the player is actually looking at.
