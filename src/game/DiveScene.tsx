@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { clang, heartbeat } from "./audio";
-import { CORRIDOR_LENGTH, reachesStoryEncounter, tunnelStart, canShoot, doubleTapSprint, walkSpeed, TRANSFORMED_REMAINS, type TunnelDirection } from "./tunnel-flow";
+import { CORRIDOR_LENGTH, reachesStoryEncounter, tunnelStart, canShoot, doubleTapSprint, walkSpeed, isTransformedRemain, advanceReturnGrowth, eyeContainsCrosshair, type TunnelDirection } from "./tunnel-flow";
 import { drawReturnGrowth, type ReturnEye } from "./return-growth";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
@@ -46,7 +46,8 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       const t = document.createElement("canvas");
       t.width = 64;
       t.height = 64;
-      const c = t.getContext("2d")!;
+      const c = t.getContext("2d");
+      if (!c) return t;
       c.imageSmoothingEnabled = false;
       draw(c);
       return t;
@@ -512,7 +513,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
     if (direction === "return") bodies.forEach((body) => { body.seen = true; });
     const returnRemains = [...bodies, ...strays].map((body, index) => ({
       body, index, growth: 0, hits: 0,
-      transforms: TRANSFORMED_REMAINS.some((i) => i === index),
+      transforms: isTransformedRemain(index),
     }));
     let sprint = false, lastW = -Infinity, pitch = 0;
     let shotFlash = 0, recoil = 0, shotCooldown = 0, hitFlash = 0;
@@ -546,13 +547,14 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       shotCooldown = 0.22; shotFlash = 0.08; recoil = 1;
       clang("hydraulic");
       const hit = [...returnEyes].sort((a,b) => a.depth - b.depth).find((eye) =>
-        Math.hypot(eye.x - W / 2, eye.y - H / 2) <= Math.max(3, eye.r * 1.25));
+        eyeContainsCrosshair(eye, W / 2, H / 2));
       if (hit) {
         const target = returnRemains[hit.index];
         if (target && target.hits < 3) { target.hits++; hitFlash = 0.16; heartbeat(); }
       }
     };
     const onMU = (e: MouseEvent) => { if (e.button === 2) aimingRef.v = false; };
+    const clearInput = () => { keys.clear(); sprint = false; aimingRef.v = false; lastW = -Infinity; };
     const onCtx = (e: Event) => e.preventDefault();
     window.addEventListener("keydown", onDown);
     window.addEventListener("keyup", onUp);
@@ -561,6 +563,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
     window.addEventListener("mousedown", onMD);
     window.addEventListener("mouseup", onMU);
     window.addEventListener("contextmenu", onCtx);
+    window.addEventListener("blur", clearInput);
 
     function toCam(p: V3): V3 {
       const dx = p.x - cam.x;
@@ -729,9 +732,8 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       hitFlash = Math.max(0, hitFlash - dt);
       if (direction === "return") {
         for (const rem of returnRemains) {
-          if (rem.transforms && rem.hits < 3 && Math.hypot(rem.body.x - cam.x, rem.body.z - cam.z) < 10) {
-            rem.growth = Math.min(1, rem.growth + dt * 0.3);
-          }
+          rem.growth = advanceReturnGrowth(rem.index, rem.growth, rem.hits,
+            Math.hypot(rem.body.x - cam.x, rem.body.z - cam.z), dt);
         }
       }
       let fwd = 0,
@@ -900,6 +902,8 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       // black tendrils growing out of the remains, with glimmering yellow nodes
       for (const t of tendrils) {
         const b = t.b;
+        // On return, the unchanged remains have eyes only, not new tumor limbs.
+        if (direction === "return") continue;
         const dz = b.z - cam.z;
         const dxx = b.x - cam.x;
         const dist = Math.sqrt(dxx * dxx + dz * dz);
@@ -1159,6 +1163,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       window.removeEventListener("mousedown", onMD);
       window.removeEventListener("mouseup", onMU);
       window.removeEventListener("contextmenu", onCtx);
+      window.removeEventListener("blur", clearInput);
       canvas.removeEventListener("click", onClick);
       if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     };

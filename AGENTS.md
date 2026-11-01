@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Reuse DiveScene for both outbound and return exploration, with direction-dependent spawn and encounter handling; this keeps the tunnel geometry and textures identical in both visits.
+- Keep return-growth eligibility and projected eye hit rules in tunnel-flow and test them independently; rendering and firing must use the same eye positions and sizes.
