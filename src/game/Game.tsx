@@ -10,15 +10,18 @@ import {
   type Line,
 } from "./dialogue";
 import { clang, heartbeat, setMasterVolume, startDrone, startMusic, stopDrone, stopMusic, unlockAudio } from "./audio";
+import { recordPraviGlas, type DiveLogEntry } from "./pravi-glas-flow";
 
 const DiveScene = lazy(() => import("./DiveScene"));
 const ChaseCutscene = lazy(() => import("./ChaseCutscene"));
+const PraviGlas = lazy(() => import("./PraviGlas"));
 
-type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits";
+type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits" | "pravi-glas";
 
 export default function Game() {
   const [scene, setScene] = useState<Scene>("title");
   const [volume, setVolume] = useState(0.6);
+  const [diveLog, setDiveLog] = useState<DiveLogEntry[]>([]);
   const musicStarted = useRef(false);
 
   useEffect(() => setMasterVolume(volume), [volume]);
@@ -26,7 +29,7 @@ export default function Game() {
   useEffect(() => {
     if (scene === "dive" || scene === "return") startDrone(0.8);
     else if (scene === "husk") startDrone(1);
-    else if (scene === "airlock") startDrone(0.3);
+    else if (scene === "airlock" || scene === "pravi-glas") startDrone(0.3);
     else stopDrone();
     // ambient music: starts after title, persists across scenes, stops on credits
     if (scene !== "title" && scene !== "credits" && !musicStarted.current) {
@@ -98,7 +101,8 @@ export default function Game() {
         </DiveFrame>
       )}
       {scene === "morgue" && <Reader title="The Morgue" lines={MORGUE_LINES} onDone={() => setScene("credits")} />}
-      {scene === "credits" && <Credits onRestart={() => setScene("title")} />}
+      {scene === "credits" && <Credits onRestart={() => setScene("pravi-glas")} />}
+      {scene === "pravi-glas" && <Suspense fallback={<LoadingPanel />}><PraviGlas entries={diveLog} onComplete={() => setDiveLog(entries => recordPraviGlas(entries, new Date()))} /></Suspense>}
       <Styles />
     </div>
   );
@@ -286,7 +290,7 @@ function Credits({ onRestart }: { onRestart: () => void }) {
           ))}
         </div>
         <button className="sy-btn" onClick={onRestart}>
-          ОПЕТ · AGAIN
+          NASTAVI · CONTINUE
         </button>
       </div>
     </div>
