@@ -6,20 +6,29 @@ import { RECEPTION, confessionBranch, deathLogSlot, type ConfessionChoice, type 
 
 const DiveScene = lazy(() => import("./DiveScene"));
 
-// Speech remains browser-only and the unattributed echo is never a speaker character.
+// Retro 8-bit "talk" blips instead of speech; the echo stays faint and unattributed.
+let blipCtx: AudioContext | null = null;
 function transmit(beat: RadioBeat) {
   const stopNoise = radioCarrier(beat.echo ? 2 : 1.3);
   let timer = 0;
-  if (beat.speaker && "speechSynthesis" in window) {
+  const oscs: OscillatorNode[] = [];
+  if (beat.speaker && typeof window !== "undefined") {
     timer = window.setTimeout(() => {
-      const speech = new SpeechSynthesisUtterance(beat.text);
-      speech.lang = "sr-RS"; speech.rate = beat.echo ? 0.72 : 0.82; speech.volume = beat.echo ? 0.18 : 0.38;
-      const voice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith("sr"));
-      if (voice) speech.voice = voice;
-      window.speechSynthesis.speak(speech);
+      blipCtx ??= new AudioContext();
+      const c = blipCtx; const t0 = c.currentTime;
+      const base = beat.speaker === "PRIJATELJ" ? 150 : 260;
+      const gain = c.createGain(); gain.gain.value = beat.echo ? 0.02 : 0.05; gain.connect(c.destination);
+      const chars = beat.text.replace(/[^\p{L}]/gu, "").length;
+      const n = Math.min(60, Math.ceil(chars / 2));
+      for (let i = 0; i < n; i++) {
+        const o = c.createOscillator(); o.type = "square";
+        o.frequency.value = base * (1 + ((i * 7) % 5) * 0.12);
+        o.connect(gain); const t = t0 + i * 0.07;
+        o.start(t); o.stop(t + 0.045); oscs.push(o);
+      }
     }, beat.pause ?? 250);
   }
-  return () => { window.clearTimeout(timer); stopNoise(); if ("speechSynthesis" in window) window.speechSynthesis.cancel(); };
+  return () => { window.clearTimeout(timer); stopNoise(); oscs.forEach(o => { try { o.stop(); } catch { /* done */ } }); };
 }
 
 export default function PraviGlas({ entries, onComplete }: { entries: DiveLogEntry[]; onComplete: () => void }) {
