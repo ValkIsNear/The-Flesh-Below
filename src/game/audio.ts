@@ -24,6 +24,26 @@ export function unlockAudio() {
   if (c && c.state === "suspended") void c.resume();
 }
 
+// Band-limited, broken carrier. Every node is stopped on scene/line change.
+export function radioCarrier(seconds = 1.3) {
+  const c = getCtx();
+  if (!c) return () => {};
+  const source = c.createBufferSource();
+  const buffer = c.createBuffer(1, Math.ceil(c.sampleRate * seconds), c.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let i = 0; i < samples.length; i++) {
+    const t = i / c.sampleRate;
+    samples[i] = (Math.random() * 2 - 1) * (Math.sin(t * 39) > 0.35 ? 0.08 : 0.28);
+  }
+  source.buffer = buffer;
+  const filter = c.createBiquadFilter(); filter.type = "bandpass"; filter.frequency.value = 1350; filter.Q.value = 0.8;
+  const gain = c.createGain(); gain.gain.value = 0.25 * masterVolume;
+  source.connect(filter).connect(gain).connect(c.destination); source.start();
+  const stop = () => { try { source.stop(); } catch { /* already stopped */ } source.disconnect(); filter.disconnect(); gain.disconnect(); };
+  source.onended = stop;
+  return stop;
+}
+
 export function setMasterVolume(v: number) {
   masterVolume = Math.max(0, Math.min(1, v));
   if (droneGain) droneGain.gain.value = 0.18 * masterVolume;
