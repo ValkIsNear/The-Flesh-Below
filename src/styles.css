@@ -142,3 +142,31 @@
     color: var(--color-foreground);
   }
 }
+
+:root {
+  --radio-bg: oklch(0.16 0.017 345);
+  --radio-ink: oklch(0.84 0.032 78);
+  --radio-muted: oklch(0.66 0.026 70);
+  --radio-signal: oklch(0.72 0.08 163);
+  --radio-border: oklch(0.38 0.045 15);
+  --radio-metal: #393635;
+  --radio-screen: #101c18;
+}
+.pg-root { position:absolute; inset:0; background:var(--radio-bg); color:var(--radio-ink); }
+.pg-status { position:absolute; top:24px; left:24px; font:12px monospace; color:var(--radio-signal); pointer-events:none; }
+.pg-tools { position:absolute; top:18px; right:22px; display:flex; gap:8px; }
+.pg-panel { position:absolute; bottom:5%; left:50%; transform:translateX(-50%); width:min(690px,92%); background:var(--radio-bg); border-top:1px solid var(--radio-border); padding:22px; max-height:70%; overflow:auto; }
+.pg-panel h2 { font:16px monospace; margin-bottom:16px; }
+.pg-speaker { font:11px monospace; color:var(--radio-signal); margin-bottom:10px; }
+.pg-line { font:17px/1.65 Georgia,serif; min-height:60px; overflow-wrap:anywhere; }
+.pg-narration { color:var(--radio-muted); font-style:italic; }
+.pg-options { display:flex; flex-direction:column; gap:8px; margin-top:18px; }
+.pg-btn { color:var(--radio-ink); border:1px solid var(--radio-border); background:var(--radio-bg); border-radius:2px; white-space:normal; height:auto; min-height:38px; padding:9px 14px; text-align:left; }
+.pg-btn:hover { background:var(--radio-border); }
+.pg-echo { color:var(--radio-muted); border-left:2px solid var(--radio-signal); padding-left:12px; font:13px monospace; margin-top:14px; }
+.pg-start { position:absolute; left:50%; bottom:12%; transform:translateX(-50%); }
+.pg-log { position:absolute; inset:10% max(4%,calc((100% - 740px)/2)); background:var(--radio-bg); border:1px solid var(--radio-border); padding:24px; overflow:auto; }
+.pg-log header { display:flex; align-items:center; justify-content:space-between; margin-bottom:30px; }
+.pg-entry { padding:18px 0; border-top:1px solid var(--radio-border); }
+.pg-entry time { display:block; color:var(--radio-signal); font:12px monospace; margin-bottom:8px; }
+@media(max-width:600px) { .pg-status { top:20px; left:12px; font-size:10px; max-width:55%; } .pg-panel { padding:16px; bottom:3%; } .pg-line { font-size:15px; } }
