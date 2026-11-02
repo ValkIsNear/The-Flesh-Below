@@ -153,6 +153,9 @@
   --radio-screen: #101c18;
 }
 .pg-root { position:absolute; inset:0; background:var(--radio-bg); color:var(--radio-ink); }
+.pg-world { position:absolute; inset:0; }
+.pg-world > div { width:100% !important; height:100%; }
+.pg-world canvas { width:100% !important; height:100% !important; object-fit:cover; }
 .pg-status { position:absolute; top:24px; left:24px; font:12px monospace; color:var(--radio-signal); pointer-events:none; }
 .pg-tools { position:absolute; top:18px; right:22px; display:flex; gap:8px; }
 .pg-panel { position:absolute; bottom:5%; left:50%; transform:translateX(-50%); width:min(690px,92%); background:var(--radio-bg); border-top:1px solid var(--radio-border); padding:22px; max-height:70%; overflow:auto; }

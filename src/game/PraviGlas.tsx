@@ -77,7 +77,7 @@ export default function PraviGlas({ entries, onComplete }: { entries: DiveLogEnt
 
   return <div className="pg-root">
     <Suspense fallback={<div className="sy-loading">…relej…</div>}>
-      <DiveScene comms paused={started || logOpen} onCommsNear={onNear} />
+      <div className="pg-world"><DiveScene comms paused={started || logOpen} onCommsNear={onNear} /></div>
     </Suspense>
     <div className="pg-status">T-77 · PRAVI GLAS<br />RELEJ 01 / DELJENI KANAL</div>
     <div className="pg-tools"><Button className="pg-btn" size="icon" title="Dive Log" aria-label="Dive Log" onClick={() => { document.exitPointerLock?.(); setLogOpen(true); }}><BookOpen /></Button></div>
