@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { ArrowRight, BookOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { radioCarrier } from "./audio";
+import { radioCarrier, unlockAudio } from "./audio";
 import { RECEPTION, confessionBranch, deathLogSlot, type ConfessionChoice, type DiveLogEntry, type RadioBeat } from "./pravi-glas-flow";
 
 const DiveScene = lazy(() => import("./DiveScene"));
@@ -37,7 +37,7 @@ export default function PraviGlas({ entries, onComplete }: { entries: DiveLogEnt
   const onNear = useCallback((value: boolean) => setNear(value), []);
   const start = useCallback(() => {
     if (!near || started) return;
-    document.exitPointerLock?.(); setStarted(true);
+    unlockAudio(); document.exitPointerLock?.(); setStarted(true);
   }, [near, started]);
   const advance = useCallback(() => {
     if (!visible || choose || done || !current) return;

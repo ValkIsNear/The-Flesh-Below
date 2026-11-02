@@ -35,3 +35,6 @@ export function recordPraviGlas(entries: DiveLogEntry[], at: Date): DiveLogEntry
 }
 export function deathLogSlot() { return { id: "death", date: "NOW", record: "Ona · smrt", corrupted: true }; }
 export function canUseComms(z: number) { return z >= 11.5; }
+export function postMorgueState(at: Date) {
+  return { morgueCompleted: true, creditsCompleted: true, entries: [{ id: "morgue", date: at.toISOString(), record: "T-77 · Mrtvačnica · Identifikacija: Unknown." }] satisfies DiveLogEntry[] };
+}

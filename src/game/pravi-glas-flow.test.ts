@@ -1,7 +1,14 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
-import { confessionBranch, RECEPTION, CONFESSION, ADVICE, recordPraviGlas, deathLogSlot, canUseComms } from "./pravi-glas-flow";
+import { confessionBranch, RECEPTION, CONFESSION, ADVICE, recordPraviGlas, deathLogSlot, canUseComms, postMorgueState } from "./pravi-glas-flow";
 describe("Pravi glas canon", () => {
+  it("test entry restores completed morgue and credits without pre-completing the new conversation", () => {
+    const state = postMorgueState(new Date("2026-11-02T20:46:00Z"));
+    assert.equal(state.morgueCompleted, true);
+    assert.equal(state.creditsCompleted, true);
+    assert.deepEqual(state.entries.map(e => e.id), ["morgue"]);
+    assert.equal(deathLogSlot().date, "NOW");
+  });
   for (const choice of ["direct", "present", "deflect"] as const) {
     it(`${choice} converges to the same unavoidable confession and ordered beats`, () => {
       const beats = [...RECEPTION, ...confessionBranch(choice)];
