@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { clang, heartbeat } from "./audio";
 import { CORRIDOR_LENGTH, reachesStoryEncounter, tunnelStart, canShoot, doubleTapSprint, walkSpeed, isTransformedRemain, advanceReturnGrowth, eyeContainsCrosshair, type TunnelDirection } from "./tunnel-flow";
 import { drawReturnGrowth, type ReturnEye } from "./return-growth";
+import { canUseComms } from "./pravi-glas-flow";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
 // The whole maintenance tunnel of Gamma-7 is flooded: heavy water tint,
 // suspended silt, and things drifting in the dark that used to be people.
-type Props = { onReach?: () => void; direction?: TunnelDirection };
+type Props = { onReach?: () => void; direction?: TunnelDirection; comms?: boolean; paused?: boolean; onCommsNear?: (near: boolean) => void };
 
 const W = 480;
 const H = 270;
@@ -21,11 +22,13 @@ const FOG = [2, 2, 4] as const;
 type V3 = { x: number; y: number; z: number; u?: number; w?: number };
 type Poly = { v: V3[]; tex?: HTMLCanvasElement; c?: [number, number, number]; shade?: number };
 
-export default function DiveScene({ onReach, direction = "outbound" }: Props) {
+export default function DiveScene({ onReach, direction = "outbound", comms = false, paused = false, onCommsNear }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reachedRef = useRef(false);
   const [log, setLog] = useState<{ line: string; sub: string } | null>(null);
   const [logOn, setLogOn] = useState(false);
+  const pausedRef = useRef(paused);
+  useEffect(() => { pausedRef.current = paused; }, [paused]);
 
 
   useEffect(() => {
@@ -185,7 +188,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       { x: -HALF_W, y: CEIL, z: CORRIDOR_LEN },
       { x: HALF_W, y: CEIL, z: CORRIDOR_LEN },
       { x: HALF_W, y: 0, z: CORRIDOR_LEN },
-      texMeat,
+      comms ? texWall : texMeat,
       0.8,
     );
 
@@ -235,6 +238,23 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
     const lamps: { x: number; y: number; z: number; phase: number }[] = [];
     for (let z = 6; z < CORRIDOR_LEN; z += 7) {
       lamps.push({ x: (rnd() > 0.5 ? -1 : 1) * (HALF_W - 0.12), y: 2.5, z, phase: rnd() * 6.28 });
+    }
+
+    if (comms) {
+      // Unoccupied slab lies beside the actual walking route, without a caption.
+      boxInto(level, -1.55, 0.7, 5.5, 1.3, 0.16, 2.7, texSuit);
+      boxInto(level, -1.55, 0, 4.6, 0.8, 0.7, 0.12, texWall);
+      boxInto(level, -1.55, 0, 6.4, 0.8, 0.7, 0.12, texWall);
+      const terminal = makeTex(c => {
+        c.fillStyle = getComputedStyle(canvas).getPropertyValue("--radio-metal"); c.fillRect(0, 0, 64, 64);
+        c.fillStyle = getComputedStyle(canvas).getPropertyValue("--radio-screen"); c.fillRect(6, 6, 52, 36);
+        c.fillStyle = getComputedStyle(canvas).getPropertyValue("--radio-signal");
+        c.font = "7px monospace"; c.fillText("COMMS / 01", 8, 18); c.fillText("T-77", 8, 29);
+        for (let i = 0; i < 6; i++) c.fillRect(8 + i * 8, 48, 4, 4);
+      });
+      boxInto(level, 0, 0, 14, 2.2, 1.1, 0.9, texWall);
+      boxInto(level, 0, 1.1, 14, 1.6, 1, 0.45, terminal);
+      quad({ x: -HALF_W, y: 0, z: 15 }, { x: -HALF_W, y: CEIL, z: 15 }, { x: HALF_W, y: CEIL, z: 15 }, { x: HALF_W, y: 0, z: 15 }, texWall);
     }
 
     // ---- drifting remains --------------------------------------------------
@@ -510,7 +530,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
 
     // ---- camera / input ---------------------------------------------------
     const cam = { x: 0, y: 1.62, ...tunnelStart(direction), bob: 0 };
-    if (direction === "return") bodies.forEach((body) => { body.seen = true; });
+    if (direction === "return" || comms) bodies.forEach((body) => { body.seen = true; });
     const returnRemains = [...bodies, ...strays].map((body, index) => ({
       body, index, growth: 0, hits: 0,
       transforms: isTransformedRemain(index),
@@ -520,6 +540,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
     let returnEyes: ReturnEye[] = [];
     const keys = new Set<string>();
     const onDown = (e: KeyboardEvent) => {
+      if (pausedRef.current) return;
       if (e.code === "KeyW" && !e.repeat) {
         const now = performance.now();
         sprint = doubleTapSprint(direction, lastW, now, e.repeat);
@@ -533,14 +554,15 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       if (e.code === "KeyW") sprint = false;
     };
     const onMouse = (e: MouseEvent) => {
-      if (document.pointerLockElement === canvas) {
+      if (!pausedRef.current && document.pointerLockElement === canvas) {
         cam.yaw += e.movementX * 0.0022;
-        if (direction === "return") pitch = Math.max(-0.55, Math.min(0.55, pitch - e.movementY * 0.0022));
+        if (direction === "return" || comms) pitch = Math.max(-0.55, Math.min(0.55, pitch - e.movementY * 0.0022));
       }
     };
     const onClick = () => canvas.requestPointerLock?.();
     const aimingRef = { v: false };
     const onMD = (e: MouseEvent) => {
+      if (comms || pausedRef.current) return;
       if (e.target !== canvas && document.pointerLockElement !== canvas) return;
       if (e.button === 2) { aimingRef.v = true; canvas.requestPointerLock?.(); }
       if (e.button !== 0 || !canShoot(direction) || shotCooldown > 0) return;
@@ -723,9 +745,11 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
     let aimK = 0;
     let gunVis = 1;
     let brownoutTimer = 9 + rnd() * 10;
+    let commsNear = false;
 
     function update(dt: number) {
       time += dt;
+      if (pausedRef.current) { keys.clear(); return; }
       shotCooldown = Math.max(0, shotCooldown - dt);
       shotFlash = Math.max(0, shotFlash - dt);
       recoil = Math.max(0, recoil - dt * 6);
@@ -801,7 +825,10 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       cam.x += -Math.sin(cam.yaw) * fwd * sp * dt - Math.cos(cam.yaw) * strafe * sp * 0.7 * dt;
 
       cam.x = Math.max(-HALF_W + 0.5, Math.min(HALF_W - 0.5, cam.x));
-      cam.z = Math.max(0.7, Math.min(CORRIDOR_LEN - 1.6, cam.z));
+      cam.z = Math.max(0.7, Math.min(comms ? 12.6 : CORRIDOR_LEN - 1.6, cam.z));
+      if (comms && canUseComms(cam.z) !== commsNear) {
+        commsNear = canUseComms(cam.z); onCommsNear?.(commsNear);
+      }
 
       const moving = fwd !== 0 || strafe !== 0;
       if (moving) {
@@ -821,7 +848,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
 
       // --- test: things stirring far down the tunnel ----------------------
       dreadTimer -= dt;
-      if (dreadTimer <= 0) {
+      if (!comms && dreadTimer <= 0) {
         dreadTimer = 7 + rnd() * 11;
         // sometimes a far-off metallic groan, sometimes a pulse that is
         // definitely not hers — deeper in, it happens more often
@@ -861,7 +888,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
         }
       }
 
-      if (reachesStoryEncounter(direction, cam.z) && !reachedRef.current) {
+      if (!comms && reachesStoryEncounter(direction, cam.z) && !reachedRef.current) {
         reachedRef.current = true;
         onReach?.();
       }
@@ -874,9 +901,11 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       ctx.fillRect(0, 0, W, H);
 
       const dyn: Poly[] = [];
-      huskPolys(dyn, time);
-      for (const b of bodies) bodyPolys(dyn, b, time);
-      for (const s of strays) bodyPolys(dyn, s, time);
+      if (!comms) {
+        huskPolys(dyn, time);
+        for (const b of bodies) bodyPolys(dyn, b, time);
+        for (const s of strays) bodyPolys(dyn, s, time);
+      }
       drawPolys([...level, ...dyn]);
       returnEyes = [];
       if (direction === "return") {
@@ -895,6 +924,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
 
       // black tendrils growing out of the remains, with glimmering yellow nodes
       for (const t of tendrils) {
+        if (comms) continue;
         const b = t.b;
         // On return, the unchanged remains have eyes only, not new tumor limbs.
         if (direction === "return") continue;
@@ -1048,7 +1078,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       // held weapon: lower-right hip, right-click raises it to center aim
       aimK += ((aimingRef.v ? 1 : 0) - aimK) * Math.min(1, 1 / 60 * 12);
       gunVis += ((brownout > 0 ? 0 : 1) - gunVis) * 0.25;
-      if (gunVis > 0.02) {
+      if (!comms && gunVis > 0.02) {
         const sway = 1 - aimK * 0.75;
         const sx = Math.sin(walkPhase * 0.5) * 3 * sway;
         const sy = (Math.abs(Math.cos(walkPhase * 0.5)) * 3 + Math.sin(time * 1.1)) * sway;
@@ -1132,7 +1162,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       ctx.lineWidth = 1;
       ctx.strokeRect(6, 10, W - 12, H - 24);
 
-      if (direction === "outbound" && !reachedRef.current && CORRIDOR_LEN - cam.z < 13) {
+      if (!comms && direction === "outbound" && !reachedRef.current && CORRIDOR_LEN - cam.z < 13) {
         ctx.fillStyle = "rgba(225,205,205,0.85)";
         ctx.font = "10px monospace";
         ctx.textAlign = "center";
@@ -1161,7 +1191,7 @@ export default function DiveScene({ onReach, direction = "outbound" }: Props) {
       canvas.removeEventListener("click", onClick);
       if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     };
-  }, [onReach, direction]);
+  }, [onReach, direction, comms, onCommsNear]);
 
   return (
     <div style={{ position: "relative", width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" }}>

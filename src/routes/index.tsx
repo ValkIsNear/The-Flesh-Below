@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import Game from "@/game/Game";
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): { scene?: string } => ({ scene: typeof search.scene === "string" ? search.scene : undefined }),
   head: () => ({
     meta: [
       { title: "Flesh Below: The Heavy — a short pixel dive" },
@@ -23,5 +24,6 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  return <Game />;
+  const { scene } = Route.useSearch();
+  return <Game testPraviGlas={scene === "praviglas"} />;
 }

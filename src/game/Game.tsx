@@ -10,23 +10,34 @@ import {
   type Line,
 } from "./dialogue";
 import { clang, heartbeat, setMasterVolume, startDrone, startMusic, stopDrone, stopMusic, unlockAudio } from "./audio";
+import { postMorgueState, recordPraviGlas, type DiveLogEntry } from "./pravi-glas-flow";
 
 const DiveScene = lazy(() => import("./DiveScene"));
 const ChaseCutscene = lazy(() => import("./ChaseCutscene"));
+const PraviGlas = lazy(() => import("./PraviGlas"));
 
-type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits";
+type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits" | "pravi-glas";
 
-export default function Game() {
-  const [scene, setScene] = useState<Scene>("title");
+export default function Game({ testPraviGlas = false }: { testPraviGlas?: boolean }) {
+  const [scene, setScene] = useState<Scene>(testPraviGlas ? "pravi-glas" : "title");
   const [volume, setVolume] = useState(0.6);
+  const [diveLog, setDiveLog] = useState<DiveLogEntry[]>([]);
+  const [progress, setProgress] = useState({ morgueCompleted: false, creditsCompleted: false });
   const musicStarted = useRef(false);
+
+  useEffect(() => {
+    if (testPraviGlas) {
+      const state = postMorgueState(new Date());
+      setDiveLog(state.entries); setProgress(state);
+    }
+  }, [testPraviGlas]);
 
   useEffect(() => setMasterVolume(volume), [volume]);
 
   useEffect(() => {
     if (scene === "dive" || scene === "return") startDrone(0.8);
     else if (scene === "husk") startDrone(1);
-    else if (scene === "airlock") startDrone(0.3);
+    else if (scene === "airlock" || scene === "pravi-glas") startDrone(0.3);
     else stopDrone();
     // ambient music: starts after title, persists across scenes, stops on credits
     if (scene !== "title" && scene !== "credits" && !musicStarted.current) {
@@ -97,8 +108,12 @@ export default function Game() {
           <DiveHud />
         </DiveFrame>
       )}
-      {scene === "morgue" && <Reader title="The Morgue" lines={MORGUE_LINES} onDone={() => setScene("credits")} />}
-      {scene === "credits" && <Credits onRestart={() => setScene("title")} />}
+      {scene === "morgue" && <Reader title="The Morgue" lines={MORGUE_LINES} onDone={() => {
+        const state = postMorgueState(new Date()); setDiveLog(state.entries);
+        setProgress({ morgueCompleted: true, creditsCompleted: false }); setScene("credits");
+      }} />}
+      {scene === "credits" && <Credits onRestart={() => { setProgress(p => ({ ...p, creditsCompleted: true })); setScene("pravi-glas"); }} />}
+      {scene === "pravi-glas" && progress.morgueCompleted && progress.creditsCompleted && <Suspense fallback={<LoadingPanel />}><PraviGlas entries={diveLog} onComplete={() => setDiveLog(entries => recordPraviGlas(entries, new Date()))} /></Suspense>}
       <Styles />
     </div>
   );
@@ -286,7 +301,7 @@ function Credits({ onRestart }: { onRestart: () => void }) {
           ))}
         </div>
         <button className="sy-btn" onClick={onRestart}>
-          ОПЕТ · AGAIN
+          NASTAVI · CONTINUE
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
-# Current task
-- [x] Connect the return corridor exit to the existing morgue dialogue.
-- [x] Add return-only double-W sprinting and shooting.
-- [x] Transform exactly two floating remains into tumor-like growths; add sparse eyes to the others.
-- [x] Test the rules and play through the return into the morgue.
+# Current task — Pravi glas
+- [x] Add post-credits walk past the empty body location to the comms center.
+- [x] Implement ordered conversation, converging choices, silence and one static echo.
+- [x] Record dated conversation in Dive Log state with death always NOW.
+- [x] Test narrative rules and play through the scene.
+- [x] Add invisible ?scene=praviglas test entry with completed morgue/credits state.
