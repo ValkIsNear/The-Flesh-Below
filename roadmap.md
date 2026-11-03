@@ -1,7 +1,7 @@
 # Current task — English edition and developer entries
-- [ ] Translate all existing dialogue, narration, UI, and titles into English.
-- [ ] Add validated scene shortcuts with post-morgue state; clearly distinguish unbuilt scenes.
-- [ ] Verify existing flows, translations, and shortcuts; deliver title screenshot.
+- [x] Translate all existing dialogue, narration, UI, and titles into English.
+- [x] Add validated scene shortcuts with post-morgue state; clearly distinguish unbuilt scenes.
+- [x] Verify existing flows, translations, and shortcuts; deliver title screenshot.
 
 ## Completed — Pravi glas
 - [x] Add post-credits walk past the empty body location to the comms center.
