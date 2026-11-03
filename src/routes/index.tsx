@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { validateDevScene, type DevScene } from "@/game/dev-scenes";
 import Game from "@/game/Game";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (search: Record<string, unknown>): { scene?: string } => ({ scene: typeof search.scene === "string" ? search.scene : undefined }),
+  validateSearch: (search: Record<string, unknown>): { scene?: DevScene } => ({ scene: validateDevScene(search.scene) }),
   head: () => ({
     meta: [
       { title: "Flesh Below: The Heavy — a short pixel dive" },
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
-        content: "A short pixel-art dive into the abyss. Inspired by Signalis. Serbian whispers, eight hundred atmospheres, one lost name.",
+        content: "A short pixel-art dive into the abyss. Inspired by Signalis. Distorted transmissions, eight hundred atmospheres, one lost name.",
       },
     ],
   }),
@@ -25,5 +26,5 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { scene } = Route.useSearch();
-  return <Game testPraviGlas={scene === "praviglas"} />;
+  return <Game devScene={scene} />;
 }

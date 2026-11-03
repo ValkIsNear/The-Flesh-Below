@@ -1,7 +1,6 @@
-# Echoes of the Deep
+# Flesh Below — The Heavy
 
-Napravi mi igricu koja je nalik signalisu, poprilicno je kratka i zavrsava se u nekih 15 minuta, zelim da ima tuznu pricu i da bude stil u pikselima. Isto tako kao sto se u signalisu koristi nemacki kao govorni jezik za fraze ovde ce tako da se koristi srpski. I also want to have lesbians. Ovo je worldbuilding koji za sada imas od koga zelim da mi napravis prototip.
-Evo kako cijeli tvoj koncept možemo prevesti i uobličiti u profesionalni Game Design / Worldbuilding Pitch i profile likova na engleskom jeziku, spremno za koncept igre, zajedno sa strukturiranim početkom priče.
+A short, pixelated first-person body-horror game inspired by Signalis, with a tragic lesbian story. All narration, radio dialogue, and UI are in English.
 
 ⚓ GAME OVERVIEW & WORLDBUILDING
 
@@ -23,7 +22,7 @@ The Purpose: The State sends modified human divers called Anglers into the abyss
 
 
 
-The Theme: The Heavy is a literal synonym for severe depression. Moving through it feels like wading through heavy, exhausting stagnation. It strips away your human nature ("narav") until you either become a machine or melt into the walls.
+The Theme: The Heavy is a literal synonym for severe depression. Moving through it feels like wading through heavy, exhausting stagnation. It strips away your human nature  until you either become a machine or melt into the walls.
 
 👤 CHARACTER PROFILES
 
@@ -49,7 +48,7 @@ Her right leg is a heavy, hydraulic prosthetic covered in dark, greasy rubber, b
 
 
 
-Psychological Profile ("Narav"): Cold, detached, and deeply dissociated. She has explosive, repressed anger issues directed at the State and the machinery. Because she kept her eyes, she is an anomaly—the other blind Anglers fear her, touching her face with long fingers because they don't understand what "seeing" is. She pushes everyone away because she carries the ultimate grief.
+Psychological Profile : Cold, detached, and deeply dissociated. She has explosive, repressed anger issues directed at the State and the machinery. Because she kept her eyes, she is an anomaly—the other blind Anglers fear her, touching her face with long fingers because they don't understand what "seeing" is. She pushes everyone away because she carries the ultimate grief.
 
 
 
@@ -67,7 +66,7 @@ Role: Operations Operator / Mission Control.
 
 
 
-Visual Style: Pale, hollow, "icon-like" face with deep, dark circles (podočnjaci) under her eyes from staring at grainy green monitors for 48-hour shifts. She moves with mechanical, stop-motion efficiency.
+Visual Style: Pale, hollow, "icon-like" face with deep, dark circles under her eyes from staring at grainy green monitors for 48-hour shifts. She moves with mechanical, stop-motion efficiency.
 
 
 
@@ -87,7 +86,7 @@ Sensory Hook: She is adjusting her gear. The fluid inside her hydraulic right le
 
 
 
-The Metaphor Introduced: The air in the Sub-Strata doesn't feel like air; it feels like an overdue debt. Kayla's flat, static-heavy voice crackles over the comms: "Pressure at 800 atmospheres. Floodgates opening. Check your seals, Tamara."
+The Metaphor Introduced: The air in the Sub-Strata doesn't feel like air; it feels like an overdue debt. Kayla's flat, static-heavy voice crackles over the comms: "Pressure at 800 atmospheres. Floodgates opening. Check the seals."
 
 
 
