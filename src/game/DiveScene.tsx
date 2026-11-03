@@ -276,7 +276,7 @@ export default function DiveScene({ onReach, direction = "outbound", comms = fal
         kind: "arm",
         phase: 0.4,
         seen: false,
-        line: "Jebote—",
+        line: "Fuck—",
         sub: "An arm, snapped open like a broken wing. Black threads grow out of the tear, jointed wrong, and something yellow blinks along them when my lamp gets close.",
       },
       {
@@ -286,7 +286,7 @@ export default function DiveScene({ onReach, direction = "outbound", comms = fal
         kind: "arm",
         phase: 2.1,
         seen: false,
-        line: "Ne gledaj.",
+        line: "Don't look.",
         sub: "Another arm, and the same black roots. They twitch toward the light. This is not decay — it is a tumor, and it is growing itself a body out of ours.",
       },
       {
@@ -296,7 +296,7 @@ export default function DiveScene({ onReach, direction = "outbound", comms = fal
         kind: "torso",
         phase: 4.4,
         seen: false,
-        line: "Tumor. Mora da se istera.",
+        line: "A tumor. It has to be purged.",
         sub: "The torso is the nest. The tendrils pulse in time with the yellow lights, learning a rhythm. It has to be driven out of the sector before it learns a voice.",
       },
     ];
@@ -1166,7 +1166,7 @@ export default function DiveScene({ onReach, direction = "outbound", comms = fal
         ctx.fillStyle = "rgba(225,205,205,0.85)";
         ctx.font = "10px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("Nešto pluta napred…", W / 2, H - 18);
+        ctx.fillText("Something is drifting ahead…", W / 2, H - 18);
       }
     }
 

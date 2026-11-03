@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { devSceneTarget, type DevScene } from "./dev-scenes";
 import { TitleTumors } from "./TitleTumors";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import {
@@ -16,21 +18,21 @@ const DiveScene = lazy(() => import("./DiveScene"));
 const ChaseCutscene = lazy(() => import("./ChaseCutscene"));
 const PraviGlas = lazy(() => import("./PraviGlas"));
 
-type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits" | "pravi-glas";
+type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits" | "pravi-glas" | "dev-unbuilt";
 
-export default function Game({ testPraviGlas = false }: { testPraviGlas?: boolean }) {
-  const [scene, setScene] = useState<Scene>(testPraviGlas ? "pravi-glas" : "title");
+export default function Game({ devScene }: { devScene?: DevScene }) {
+  const [scene, setScene] = useState<Scene>(devSceneTarget(devScene));
   const [volume, setVolume] = useState(0.6);
   const [diveLog, setDiveLog] = useState<DiveLogEntry[]>([]);
   const [progress, setProgress] = useState({ morgueCompleted: false, creditsCompleted: false });
   const musicStarted = useRef(false);
 
   useEffect(() => {
-    if (testPraviGlas) {
+    if (devScene) {
       const state = postMorgueState(new Date());
       setDiveLog(state.entries); setProgress(state);
     }
-  }, [testPraviGlas]);
+  }, [devScene]);
 
   useEffect(() => setMasterVolume(volume), [volume]);
 
@@ -69,7 +71,7 @@ export default function Game({ testPraviGlas = false }: { testPraviGlas?: boolea
       {scene === "intro" && <Reader title="Introduction" lines={INTRO_PROSE} onDone={() => setScene("airlock")} />}
       {scene === "airlock" && (
         <Reader
-          title="Airlock 4 — Pritisak 800 atm"
+          title="Airlock 4 — Pressure 800 atm"
           lines={AIRLOCK_LINES}
           onDone={() => setScene("dive")}
           onLine={(l) => {
@@ -113,7 +115,8 @@ export default function Game({ testPraviGlas = false }: { testPraviGlas?: boolea
         setProgress({ morgueCompleted: true, creditsCompleted: false }); setScene("credits");
       }} />}
       {scene === "credits" && <Credits onRestart={() => { setProgress(p => ({ ...p, creditsCompleted: true })); setScene("pravi-glas"); }} />}
-      {scene === "pravi-glas" && progress.morgueCompleted && progress.creditsCompleted && <Suspense fallback={<LoadingPanel />}><PraviGlas entries={diveLog} onComplete={() => setDiveLog(entries => recordPraviGlas(entries, new Date()))} /></Suspense>}
+      {scene === "pravi-glas" && progress.morgueCompleted && progress.creditsCompleted && <Suspense fallback={<LoadingPanel />}><PraviGlas initialLogOpen={devScene === "divelog"} entries={diveLog} onComplete={() => setDiveLog(entries => recordPraviGlas(entries, new Date()))} /></Suspense>}
+      {scene === "dev-unbuilt" && <section className="pg-log" aria-label="Developer scene unavailable"><header><h2>DEV / {devScene?.toUpperCase()}</h2></header><p>This scene has not been built yet.</p><p>Post-morgue state initialized. No story events have been added.</p><Button className="pg-btn" onClick={() => setScene("pravi-glas")}>Comms</Button></section>}
       <Styles />
     </div>
   );
@@ -146,12 +149,12 @@ function Title({ onStart, volume, setVolume }: { onStart: () => void; volume: nu
             <div key={l}>{l}</div>
           ))}
         </div>
-        <button className="sy-btn" onClick={onStart}>
-          ZARONI &nbsp;·&nbsp; BEGIN
-        </button>
+        <Button variant="ghost" className="sy-btn" onClick={onStart}>
+          BEGIN DIVE
+        </Button>
         <div className="sy-controls">
-          <div>Arrows / WASD — pokret · move</div>
-          <div>Space / Enter — dalje · continue</div>
+          <div>Arrows / WASD — move</div>
+          <div>Space / Enter — continue</div>
         </div>
         <label className="sy-vol">
           Vol
@@ -188,7 +191,7 @@ function Reader({
   const current = lines[i];
   const fullText =
     current.kind === "radio"
-      ? `${current.speaker}: ${current.sr ? current.sr + "  " : ""}${current.text}`
+      ? `${current.speaker}: ${current.text}`
       : current.text;
 
   useEffect(() => {
@@ -238,21 +241,18 @@ function Reader({
           {current.kind === "radio" && (
             <>
               <span className={`sy-speaker sy-${current.speaker.toLowerCase()}`}>{current.speaker}</span>
-              {current.sr && (
-                <span className="sy-sr">
-                  {current.sr.slice(0, Math.max(0, revealed - current.speaker.length - 2))}
-                </span>
-              )}
               <span className="sy-en">
-                {fullText.slice(current.speaker.length + 2 + (current.sr ? current.sr.length + 2 : 0), revealed)}
+                {fullText.slice(current.speaker.length + 2, revealed)}
               </span>
             </>
           )}
           {current.kind !== "radio" && <span>{fullText.slice(0, revealed)}</span>}
           <span className="sy-cursor">▌</span>
         </div>
-        <div className="sy-hint">[ space ] nastavi · continue</div>
-        <button
+        <div className="sy-hint">[ space ] continue</div>
+        <Button
+          variant="ghost"
+          aria-label="Continue"
           className="sy-skip"
           onClick={() => {
             if (revealed < fullText.length) setRevealed(fullText.length);
@@ -261,7 +261,7 @@ function Reader({
           }}
         >
           ▸
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -280,13 +280,13 @@ function DiveHud() {
         <span>PRESSURE 800 atm</span>
         <span>O₂ 47%</span>
       </div>
-      <div className="sy-hud-hint">WASD — kretanje · miš — pogled · desni klik — nišan</div>
+      <div className="sy-hud-hint">WASD — move · mouse — look · right click — aim</div>
     </div>
   );
 }
 
 function LoadingPanel() {
-  return <div className="sy-loading">…učitavanje dubine…</div>;
+  return <div className="sy-loading">…loading the depths…</div>;
 }
 
 function Credits({ onRestart }: { onRestart: () => void }) {
@@ -300,9 +300,9 @@ function Credits({ onRestart }: { onRestart: () => void }) {
             <div key={i}>{l || "\u00a0"}</div>
           ))}
         </div>
-        <button className="sy-btn" onClick={onRestart}>
-          NASTAVI · CONTINUE
-        </button>
+        <Button variant="ghost" className="sy-btn" onClick={onRestart}>
+          CONTINUE
+        </Button>
       </div>
     </div>
   );
@@ -340,11 +340,12 @@ function Styles() {
         mix-blend-mode: screen;
         transition: background 80ms linear;
       }
-      .sy-title-inner { position: relative; z-index: 2; text-align: center; max-width: 540px; padding: 24px; }
+      .sy-title-inner { position: relative; z-index: 2; text-align: center; width: min(620px, 100%); padding: 24px; }
       .sy-mark {
-        font-family: "Times New Roman", serif; font-size: 112px; letter-spacing: 0.2em;
+        font-family: "Times New Roman", serif; font-size: 88px; letter-spacing: 0; overflow-wrap: normal;
         color: #f1e6d6; text-shadow: 0 0 30px rgba(180, 40, 60, 0.4);
       }
+      @media (max-width: 600px) { .sy-mark { font-size: 56px; } .sy-mark.sy-small { font-size: 48px; } }
       .sy-mark.sy-small { font-size: 64px; }
       .sy-sub { font-size: 13px; letter-spacing: 0.4em; color: #a08a78; margin-bottom: 28px; }
       .sy-above { margin-bottom: 6px; }
@@ -383,8 +384,6 @@ function Styles() {
       .sy-kayla { color: #c46a78; }
       .sy-system { color: #6aa898; }
       .sy-abyss { color: #a84858; font-weight: bold; text-shadow: 0 0 4px rgba(200, 40, 60, 0.6); }
-      .sy-sr { color: #e0c8b0; font-style: italic; }
-      .sy-sr::after { content: " "; }
       .sy-en { color: #8a7a6a; }
       .sy-cursor { animation: sy-blink 1s steps(2) infinite; color: #a85a60; margin-left: 2px; }
       @keyframes sy-blink { 50% { opacity: 0; } }

@@ -10,12 +10,12 @@ const F = 150; // focal length
 const CX = W / 2;
 const CY = H / 2;
 
-type Beat = { at: number; sr: string; en: string };
+type Beat = { at: number; text: string };
 const BEATS: Beat[] = [
-  { at: 1.2, sr: "Ovaj hodnik nije na mapi.", en: "This corridor isn't on the map." },
-  { at: 5.0, sr: "Nešto raste na zidu.", en: "Something is growing on the wall." },
-  { at: 8.4, sr: "Diše. Još je aktivno.", en: "It breathes. It's still active." },
-  { at: 11.6, sr: "Nazad. Odmah nazad.", en: "Back. Back away, now." },
+  { at: 1.2, text: "This corridor isn't on the map." },
+  { at: 5.0, text: "Something is growing on the wall." },
+  { at: 8.4, text: "It breathes. It's still active." },
+  { at: 11.6, text: "Back. Back away, now." },
 ];
 
 export default function ChaseCutscene({ onDone }: Props) {
@@ -310,18 +310,18 @@ export default function ChaseCutscene({ onDone }: Props) {
     let flash = 0;
     let recoil = 0;
     let hitFx = 0;
-    const AIM_BEAT: Beat = { at: 0, sr: "Neće me pustiti. Pucaj u oko.", en: "It won't let me go. Shoot the eye." };
+    const AIM_BEAT: Beat = { at: 0, text: "It won't let me go. Shoot the eye." };
     const DEAD_BEATS: Beat[] = [
-      { at: 0.4, sr: "Gotovo.", en: "It's done." },
-      { at: 2.6, sr: "Ali ih ima još. Nazad.", en: "But there are more. Back away." },
+      { at: 0.4, text: "It's done." },
+      { at: 2.6, text: "But there are more. Back away." },
     ];
     const MORE_BEATS: Beat[] = [
-      { at: 0, sr: "Još jedno. Na levom zidu.", en: "Another one. On the left wall." },
-      { at: 0, sr: "Gore. I ovo me gleda.", en: "Up there. This one is watching too." },
+      { at: 0, text: "Another one. On the left wall." },
+      { at: 0, text: "Up there. This one is watching too." },
     ];
     const MID_BEATS: Beat[] = [
-      { at: 0, sr: "Dalje.", en: "Keep going." },
-      { at: 0, sr: "Ima ih sve više.", en: "There are more of them." },
+      { at: 0, text: "Keep going." },
+      { at: 0, text: "There are more of them." },
     ];
     let eyeScr = { x: -999, y: -999, r: 0 };
 
@@ -553,7 +553,7 @@ export default function ChaseCutscene({ onDone }: Props) {
         ctx.fillStyle = "rgba(220,200,190,0.55)";
         ctx.font = "7px monospace";
         ctx.textAlign = "center";
-        ctx.fillText("[ desni klik ] nišani  ·  [ levi klik ] pucaj", CX, 18);
+        ctx.fillText("[ right click ] aim  ·  [ left click ] fire", CX, 18);
       }
       if (t < 1) {
         ctx.fillStyle = `rgba(0,0,0,${1 - t})`;
@@ -616,8 +616,7 @@ export default function ChaseCutscene({ onDone }: Props) {
               transition: "opacity 1.2s ease",
             }}
           >
-            <div style={{ color: "#e8c9a0" }}>{beat.sr}</div>
-            <div style={{ opacity: 0.62, fontSize: "0.75rem", marginTop: 4 }}>{beat.en}</div>
+            <div style={{ color: "#e8c9a0" }}>{beat.text}</div>
           </div>
         )}
       </div>
