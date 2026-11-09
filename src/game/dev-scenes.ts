@@ -6,6 +6,7 @@ export function validateDevScene(value: unknown): DevScene | undefined {
 export function devSceneTarget(scene?: DevScene) {
   if (!scene) return "title";
   if (scene === "praviglas" || scene === "comms" || scene === "divelog") return "pravi-glas";
-  if (scene === "signal" || scene === "thebleed" || scene === "finale") return "dev-unbuilt";
+  if (scene === "signal") return "signal";
+  if (scene === "thebleed" || scene === "finale") return "dev-unbuilt";
   return scene;
 }

@@ -14,7 +14,8 @@ describe("invisible developer scene entries", () => {
     assert.equal(devSceneTarget(validateDevScene("praviglas")), "pravi-glas");
   });
   it("unbuilt narrative scenes are never redirected into unrelated story", () => {
-    for (const scene of ["signal", "thebleed", "finale"] as const) assert.equal(devSceneTarget(scene), "dev-unbuilt");
+    for (const scene of ["thebleed", "finale"] as const) assert.equal(devSceneTarget(scene), "dev-unbuilt");
+    assert.equal(devSceneTarget("signal"), "signal");
   });
   it("every accepted developer entry uses completed morgue and credits state", () => {
     for (const scene of DEV_SCENES) {

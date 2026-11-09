@@ -31,7 +31,7 @@ function transmit(beat: RadioBeat) {
   return () => { window.clearTimeout(timer); stopNoise(); oscs.forEach(o => { try { o.stop(); } catch { /* done */ } }); };
 }
 
-export default function PraviGlas({ entries, onComplete, initialLogOpen = false }: { entries: DiveLogEntry[]; onComplete: () => void; initialLogOpen?: boolean }) {
+export default function PraviGlas({ entries, onComplete, onContinue, initialLogOpen = false }: { entries: DiveLogEntry[]; onComplete: () => void; onContinue?: () => void; initialLogOpen?: boolean }) {
   const [near, setNear] = useState(false);
   const [started, setStarted] = useState(false);
   const [choice, setChoice] = useState<ConfessionChoice | null>(null);
@@ -104,7 +104,7 @@ export default function PraviGlas({ entries, onComplete, initialLogOpen = false 
         <div className="pg-options"><Button className="pg-btn" size="icon" aria-label="Continue conversation" title="Continue" disabled={!visible} onClick={advance}><ArrowRight /></Button></div>
       </>}
     </section>}
-    {done && <section className="pg-panel"><div className="pg-speaker">RELAY 01 · TRANSMISSION CLOSED</div><div className="pg-narration pg-line">The relay clicks back into its rhythm. I keep my hand on the switch a little longer.</div><Button className="pg-btn" onClick={() => setLogOpen(true)}><BookOpen /> Dive Log</Button></section>}
+    {done && <section className="pg-panel"><div className="pg-speaker">RELAY 01 · TRANSMISSION CLOSED</div><div className="pg-narration pg-line">The relay clicks back into its rhythm. I keep my hand on the switch a little longer.</div><Button className="pg-btn" onClick={() => setLogOpen(true)}><BookOpen /> Dive Log</Button>{onContinue && <Button className="pg-btn" onClick={onContinue}>The signal is breaking up <ArrowRight /></Button>}</section>}
     {logOpen && <section className="pg-log" aria-label="Dive Log"><header><h2>DIVE LOG / T-77</h2><Button className="pg-btn" size="icon" aria-label="Close Dive Log" onClick={() => setLogOpen(false)}><X /></Button></header>
       {[...entries, deathLogSlot()].map(entry => <article key={entry.id} className="pg-entry"><time>{entry.date}</time><p>{entry.record}</p></article>)}
     </section>}
