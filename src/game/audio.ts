@@ -276,3 +276,21 @@ export function stopMusic() {
     musicNodes = null;
   }
 }
+
+// Distant metallic groan: a slow pitch-bent, filtered sawtooth.
+export function metalGroan() {
+  const c = getCtx();
+  if (!c) return;
+  const t = c.currentTime;
+  const osc = c.createOscillator(); osc.type = "sawtooth";
+  osc.frequency.setValueAtTime(70 + Math.random() * 30, t);
+  osc.frequency.linearRampToValueAtTime(38 + Math.random() * 12, t + 2.6);
+  const filter = c.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 320; filter.Q.value = 6;
+  const gain = c.createGain();
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(0.09 * masterVolume, t + 0.8);
+  gain.gain.linearRampToValueAtTime(0, t + 2.8);
+  osc.connect(filter).connect(gain).connect(c.destination);
+  osc.start(t); osc.stop(t + 3);
+  osc.onended = () => { osc.disconnect(); filter.disconnect(); gain.disconnect(); };
+}
