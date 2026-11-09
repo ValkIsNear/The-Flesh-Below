@@ -173,3 +173,6 @@
 .pg-entry { padding:18px 0; border-top:1px solid var(--radio-border); }
 .pg-entry time { display:block; color:var(--radio-signal); font:12px monospace; margin-bottom:8px; }
 @media(max-width:600px) { .pg-status { top:20px; left:12px; font-size:10px; max-width:55%; } .pg-panel { padding:16px; bottom:3%; } .pg-line { font-size:15px; } }
+
+.sg-canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; }
+.sg-hint { position: absolute; left: 1rem; bottom: 1rem; font-size: 0.7rem; letter-spacing: 0.08em; opacity: 0.55; color: var(--muted-foreground); }
