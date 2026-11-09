@@ -17,8 +17,9 @@ import { postMorgueState, recordPraviGlas, type DiveLogEntry } from "./pravi-gla
 const DiveScene = lazy(() => import("./DiveScene"));
 const ChaseCutscene = lazy(() => import("./ChaseCutscene"));
 const PraviGlas = lazy(() => import("./PraviGlas"));
+const SignalScene = lazy(() => import("./SignalScene"));
 
-type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits" | "pravi-glas" | "dev-unbuilt";
+type Scene = "title" | "intro" | "airlock" | "dive" | "husk" | "chase" | "return" | "morgue" | "credits" | "pravi-glas" | "signal" | "signal-relay" | "dev-unbuilt";
 
 export default function Game({ devScene }: { devScene?: DevScene }) {
   const [scene, setScene] = useState<Scene>(devSceneTarget(devScene));
@@ -115,7 +116,9 @@ export default function Game({ devScene }: { devScene?: DevScene }) {
         setProgress({ morgueCompleted: true, creditsCompleted: false }); setScene("credits");
       }} />}
       {scene === "credits" && <Credits onRestart={() => { setProgress(p => ({ ...p, creditsCompleted: true })); setScene("pravi-glas"); }} />}
-      {scene === "pravi-glas" && progress.morgueCompleted && progress.creditsCompleted && <Suspense fallback={<LoadingPanel />}><PraviGlas initialLogOpen={devScene === "divelog"} entries={diveLog} onComplete={() => setDiveLog(entries => recordPraviGlas(entries, new Date()))} /></Suspense>}
+      {scene === "pravi-glas" && progress.morgueCompleted && progress.creditsCompleted && <Suspense fallback={<LoadingPanel />}><PraviGlas initialLogOpen={devScene === "divelog"} entries={diveLog} onComplete={() => setDiveLog(entries => recordPraviGlas(entries, new Date()))} onContinue={() => setScene("signal")} /></Suspense>}
+      {scene === "signal" && progress.morgueCompleted && <Suspense fallback={<LoadingPanel />}><SignalScene onDone={() => setScene("signal-relay")} /></Suspense>}
+      {scene === "signal-relay" && <section className="pg-log" aria-label="Relay room"><header><h2>RELAY ROOM</h2></header><p>The bulkhead seals behind me.</p><p>DEV · Next room not built yet.</p><Button className="pg-btn" onClick={() => setScene("signal")}>Replay corridor</Button></section>}
       {scene === "dev-unbuilt" && <section className="pg-log" aria-label="Developer scene unavailable"><header><h2>DEV / {devScene?.toUpperCase()}</h2></header><p>This scene has not been built yet.</p><p>Post-morgue state initialized. No story events have been added.</p><Button className="pg-btn" onClick={() => setScene("pravi-glas")}>Comms</Button></section>}
       <Styles />
     </div>
