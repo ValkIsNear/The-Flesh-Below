@@ -23,6 +23,10 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
     const keys = new Set<string>();
     let lastW = 0, sprint = false;
     const cam = { x: 0, z: 0.5, yaw: 0, bob: 0 };
+    let back = false, blink = 0;
+    const mdown = (e: MouseEvent) => { if (e.button === 2) { back = true; blink = 0.18; } };
+    const mup = (e: MouseEvent) => { if (e.button === 2) { back = false; blink = 0.18; } };
+    const ctx = (e: Event) => e.preventDefault();
     let played = 0, lineTimer = 0, groanTimer = 3, stepAcc = 0, raf = 0, last = performance.now();
     const down = (e: KeyboardEvent) => {
       unlockAudio();
@@ -35,10 +39,12 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
     const click = () => { unlockAudio(); canvas.requestPointerLock?.(); };
     window.addEventListener("keydown", down); window.addEventListener("keyup", up);
     window.addEventListener("mousemove", move); canvas.addEventListener("click", click);
+    window.addEventListener("mousedown", mdown); window.addEventListener("mouseup", mup); window.addEventListener("contextmenu", ctx);
 
     const proj = (x: number, y: number, dz: number) => {
       const d = Math.max(0.05, dz);
-      return [W / 2 + (x - cam.x) / d * F - cam.yaw * F, H / 2 - (y - Math.sin(cam.bob) * 0.03) / d * F] as const;
+      const sx = back ? -1 : 1;
+      return [W / 2 + sx * (x - cam.x) / d * F - (back ? 0 : cam.yaw * F), H / 2 - (y - Math.sin(cam.bob) * 0.03) / d * F] as const;
     };
     const quad = (pts: (readonly [number, number])[], fill: string) => {
       g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) g.lineTo(p[0], p[1]); g.closePath(); g.fillStyle = fill; g.fill();
@@ -73,9 +79,8 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
       const water = FLOOR + waterLevel(cam.z) * (CEIL - FLOOR);
       const doorZ = SIGNAL_DOOR_Z + 1.2;
       const startZ = Math.floor(cam.z);
-      for (let z = Math.min(doorZ - 1, startZ + 20); z >= startZ; z--) {
-        const a = z - cam.z, b = a + 1;
-        if (b <= 0.05) continue;
+      const seg = (z: number, a: number, b: number) => {
+        if (b <= 0.05) return;
         const za = Math.max(0.06, a);
         const flick = (Math.sin(t * 13 + z * 7.3) > -0.85 ? 1 : 0.25) * (0.75 + 0.25 * Math.sin(t * 3 + z));
         const rib = z % 4 === 0;
@@ -94,16 +99,25 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
         const ripple = Math.sin(t * 2 + z * 1.7) * 0.5;
         const [r1x, r1y] = proj(-HALF * 0.8 + ripple * 0.4, water, za + 0.5), [r2x] = proj(HALF * 0.6 + ripple * 0.3, water, za + 0.5);
         g.fillStyle = shade([80, 70, 40], za, flick * 0.6); g.fillRect(r1x, r1y, Math.max(1, r2x - r1x) * 0.3, 1);
+      };
+      if (back) {
+        // looking over the shoulder: the sealed hatch I came through
+        const hd = cam.z + 0.3;
+        quad([proj(-HALF, CEIL, hd), proj(HALF, CEIL, hd), proj(HALF, water, hd), proj(-HALF, water, hd)], shade([22, 20, 18], hd));
+        for (let z = 0; z <= startZ; z++) seg(z, cam.z - (z + 1), cam.z - z + 0.0);
+      } else {
+        for (let z = Math.min(doorZ - 1, startZ + 20); z >= startZ; z--) seg(z, z - cam.z, z - cam.z + 1);
       }
       // far door
       const dd = doorZ - cam.z;
-      if (dd < 22) {
+      if (!back && dd < 22) {
         quad([proj(-HALF, CEIL, dd), proj(HALF, CEIL, dd), proj(HALF, water, dd), proj(-HALF, water, dd)], shade([26, 24, 20], dd));
         const pulse = 0.6 + 0.4 * Math.sin(t * 4);
         const [x0, y0] = proj(-0.5, 0.45, dd), [x1, y1] = proj(0.5, water, dd);
         g.strokeStyle = shade([240, 160, 50], dd * 0.5, pulse); g.lineWidth = 1; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
         const [lx, ly] = proj(0, 0.1, dd); g.fillStyle = shade([255, 60, 30], dd * 0.4, pulse); g.fillRect(lx - 1, ly - 1, 3, 3);
       }
+      if (blink > 0) { blink -= dt; g.fillStyle = `rgba(0,0,0,${Math.min(1, blink * 6)})`; g.fillRect(0, 0, W, H); }
       g.fillStyle = "rgba(0,0,0,0.25)"; for (let y = 0; y < H; y += 2) g.fillRect(0, y, W, 1);
       raf = requestAnimationFrame(frame);
     };
@@ -113,6 +127,7 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", down); window.removeEventListener("keyup", up);
       window.removeEventListener("mousemove", move); canvas.removeEventListener("click", click);
+      window.removeEventListener("mousedown", mdown); window.removeEventListener("mouseup", mup); window.removeEventListener("contextmenu", ctx);
       document.exitPointerLock?.();
     };
   }, []);
@@ -120,7 +135,7 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
   return <div className="pg-root">
     <canvas ref={canvasRef} width={W} height={H} className="sg-canvas" aria-label="Submerged corridor" />
     <div className="pg-status">T-77 · SECTOR UNLISTED<br />RELAY 01 / SIGNAL DEGRADING</div>
-    <div className="sg-hint">W/S move · double-W sprint · A/D sidestep · click to look</div>
+    <div className="sg-hint">W/S move · double-W sprint · A/D sidestep · click to look · hold right click — look behind</div>
     {line && <div className="pg-panel"><div className="pg-speaker">T-77 / INTERNAL</div><div className="pg-narration pg-line">{line}</div></div>}
     {atDoor && <Button className="pg-btn pg-start" onClick={exit}>E · Open bulkhead</Button>}
   </div>;
