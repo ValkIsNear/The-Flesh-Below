@@ -1,22 +1,23 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { ArrowRight, BookOpen, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { radioCarrier, unlockAudio } from "./audio";
-import { RECEPTION, confessionBranch, deathLogSlot, type ConfessionChoice, type DiveLogEntry, type RadioBeat } from "./pravi-glas-flow";
+import { clang, radioCarrier, unlockAudio } from "./audio";
+import { COMMS_ENTRY, COMMS_CHOICES, RECEPTION, confessionBranch, deathLogSlot, type ConfessionChoice, type DiveLogEntry, type RadioBeat } from "./pravi-glas-flow";
 
 const DiveScene = lazy(() => import("./DiveScene"));
 
 // Retro 8-bit "talk" blips instead of speech; the echo stays faint and unattributed.
 let blipCtx: AudioContext | null = null;
 function transmit(beat: RadioBeat) {
-  const stopNoise = radioCarrier(beat.echo ? 2 : 1.3);
+  const stopNoise = beat.echo ? () => {} : radioCarrier(beat.sound === "regulator" ? 2.5 : 1.3);
+  if (beat.sound === "console") clang("hydraulic");
   let timer = 0;
   const oscs: OscillatorNode[] = [];
   if (beat.speaker && typeof window !== "undefined") {
     timer = window.setTimeout(() => {
       blipCtx ??= new AudioContext();
       const c = blipCtx; const t0 = c.currentTime;
-      const base = beat.speaker === "FRIEND" ? 150 : 260;
+       const base = beat.speaker === "R." ? 150 : 260;
       const gain = c.createGain(); gain.gain.value = beat.echo ? 0.02 : 0.05; gain.connect(c.destination);
       const chars = beat.text.replace(/[^\p{L}]/gu, "").length;
       const n = Math.min(60, Math.ceil(chars / 2));
@@ -37,7 +38,6 @@ export default function PraviGlas({ entries, onComplete, onContinue, initialLogO
   const [choice, setChoice] = useState<ConfessionChoice | null>(null);
   const [index, setIndex] = useState(0);
   const [visible, setVisible] = useState(false);
-  const [echo, setEcho] = useState(false);
   const [done, setDone] = useState(false);
   const [logOpen, setLogOpen] = useState(initialLogOpen);
   const beats = choice ? [...RECEPTION, ...confessionBranch(choice)] : RECEPTION;
@@ -50,28 +50,20 @@ export default function PraviGlas({ entries, onComplete, onContinue, initialLogO
   }, [near, started]);
   const advance = useCallback(() => {
     if (!visible || choose || done || !current) return;
-    const next = index + (current.id === "advice" ? 2 : 1);
+    const next = index + 1;
     if (choice && next >= beats.length) { setDone(true); onComplete(); }
     else setIndex(next);
   }, [visible, choose, done, current, index, choice, beats.length, onComplete]);
 
   useEffect(() => {
-    const trigger: RadioBeat = { id: "trigger", speaker: "FRIEND", text: "T-77… relay here. Do you read me?", pause: 1400 };
-    return transmit(trigger);
-  }, []);
+    if (near && !started && !logOpen) start();
+  }, [near, started, logOpen, start]);
   useEffect(() => {
     if (!started || !current || done) return;
-    setVisible(false); setEcho(false);
-    const stop = current.speaker ? transmit(current) : () => {};
+    setVisible(false);
+    const stop = current.speaker || current.sound ? transmit(current) : () => {};
     const timer = window.setTimeout(() => setVisible(true), current.pause ?? 180);
-    // Advice and the single secondary-channel echo occupy the same moment.
-    let stopEcho = () => {};
-    const echoTimer = current.id === "advice" ? window.setTimeout(() => {
-      setEcho(true);
-      const echoBeat = beats[index + 1];
-      if (echoBeat) stopEcho = transmit(echoBeat);
-    }, current.pause ?? 700) : undefined;
-    return () => { stop(); stopEcho(); window.clearTimeout(timer); window.clearTimeout(echoTimer); };
+    return () => { stop(); window.clearTimeout(timer); };
   // Beat identity comes from the stable choice and index, not the rebuilt array.
   }, [started, index, choice, done]);
   useEffect(() => {
@@ -88,23 +80,19 @@ export default function PraviGlas({ entries, onComplete, onContinue, initialLogO
     <Suspense fallback={<div className="sy-loading">…relay…</div>}>
       <div className="pg-world"><DiveScene comms paused={started || logOpen} onCommsNear={onNear} /></div>
     </Suspense>
-    <div className="pg-status">T-77 · A REAL VOICE<br />RELAY 01 / SHARED CHANNEL</div>
+    <div className="pg-status">T-77 · COMMUNICATIONS CENTER<br />R. / SHARED CHANNEL</div>
     <div className="pg-tools"><Button className="pg-btn" size="icon" title="Dive Log" aria-label="Dive Log" onClick={() => { document.exitPointerLock?.(); setLogOpen(true); }}><BookOpen /></Button></div>
-    {!started && <div className="pg-panel"><div className="pg-speaker">FRIEND · RX / SIGNAL LOSS</div><div className="pg-line">T-77… relay here. Do you read me?</div><div className="pg-narration">Not the voice I was waiting for. Too much hiss. A syllable arrives after the carrier has closed.</div></div>}
-    {!started && near && <Button className="pg-btn pg-start" onClick={start}>E · Engage transmitter</Button>}
-    {started && !done && <section className="pg-panel" aria-label="A Real Voice conversation" aria-live="polite">
-      {choose ? <><div className="pg-narration pg-line">I have kept the sentence behind my teeth all the way here.</div><div className="pg-options">
-        <Button className="pg-btn" onClick={() => setChoice("direct")}>I need to say something.</Button>
-        <Button className="pg-btn" onClick={() => setChoice("present")}>She's with me. Can't you hear her?</Button>
-        <Button className="pg-btn" onClick={() => setChoice("deflect")}>Can we just check the signal?</Button>
+    {!started && <div className="pg-panel"><div className="pg-speaker">T-77 / INTERNAL</div><div className="pg-narration pg-line">{COMMS_ENTRY}</div></div>}
+    {started && !done && <section className="pg-panel" aria-label="R. conversation" aria-live="polite">
+      {choose ? <><div className="pg-options">
+        {COMMS_CHOICES.map(option => <Button key={option.id} className="pg-btn" onClick={() => setChoice(option.id)}>{option.text}</Button>)}
       </div></> : current && <>
-        <div className="pg-speaker">{current.speaker ?? "T-77 / INTERNAL"}{current.speaker === "FRIEND" ? " · RX / SIGNAL LOSS" : ""}</div>
-        <div className={`pg-line ${current.speaker ? "" : "pg-narration"}`}>{visible ? current.text : "…"}</div>
-        {echo && <div className="pg-echo">CHANNEL 02 · Come home.</div>}
+        <div className="pg-speaker">{current.speaker ?? "T-77 / INTERNAL"}{current.speaker === "R." ? " · RX / SIGNAL LOSS" : ""}</div>
+        <div className={`pg-line ${current.echo ? "pg-echo" : current.speaker ? "" : "pg-narration"}`}>{visible ? current.text : "…"}</div>
         <div className="pg-options"><Button className="pg-btn" size="icon" aria-label="Continue conversation" title="Continue" disabled={!visible} onClick={advance}><ArrowRight /></Button></div>
       </>}
     </section>}
-    {done && <section className="pg-panel"><div className="pg-speaker">RELAY 01 · TRANSMISSION CLOSED</div><div className="pg-narration pg-line">The relay clicks back into its rhythm. I keep my hand on the switch a little longer.</div><Button className="pg-btn" onClick={() => setLogOpen(true)}><BookOpen /> Dive Log</Button>{onContinue && <Button className="pg-btn" onClick={onContinue}>The signal is breaking up <ArrowRight /></Button>}</section>}
+    {done && <section className="pg-panel"><div className="pg-speaker">R. · CHANNEL LOST</div><Button className="pg-btn" onClick={() => setLogOpen(true)}><BookOpen /> Dive Log</Button>{onContinue && <Button className="pg-btn" onClick={onContinue}>Go to the junction box <ArrowRight /></Button>}</section>}
     {logOpen && <section className="pg-log" aria-label="Dive Log"><header><h2>DIVE LOG / T-77</h2><Button className="pg-btn" size="icon" aria-label="Close Dive Log" onClick={() => setLogOpen(false)}><X /></Button></header>
       {[...entries, deathLogSlot()].map(entry => <article key={entry.id} className="pg-entry"><time>{entry.date}</time><p>{entry.record}</p></article>)}
     </section>}
