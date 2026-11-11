@@ -13,4 +13,5 @@
 - Keep return-growth eligibility and projected eye hit rules in tunnel-flow and test them independently; rendering and firing must use the same eye positions and sizes.
 - Reuse DiveScene's renderer in an isolated comms mode for post-credits walking; pause input without rebuilding the level during dialogue to preserve player position.
 - Keep post-credits conversation branches and Dive Log event rules in a browser-safe pure module with tests; Game owns session log state, and dialogue choices must converge before advancing.
+- Start comms reception from terminal proximity and keep entry, options, branches, and shared ending in the conversation flow module; this preserves walking while preventing divergent scene endings.
 - Validate invisible scene search entries in the browser-safe dev-scenes module; reuse existing scenes and normal post-morgue state, and show an explicit developer-only unavailable view for scenes not yet built rather than inventing narrative.
