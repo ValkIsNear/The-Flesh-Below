@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
-import { confessionBranch, RECEPTION, CONFESSION, ADVICE, recordPraviGlas, deathLogSlot, canUseComms, postMorgueState } from "./pravi-glas-flow";
+import { confessionBranch, RECEPTION, COMMS_END, COMMS_CHOICES, recordPraviGlas, deathLogSlot, canUseComms, postMorgueState } from "./pravi-glas-flow";
 describe("Pravi glas canon", () => {
   it("test entry restores completed morgue and credits without pre-completing the new conversation", () => {
     const state = postMorgueState(new Date("2026-11-02T20:46:00Z"));
@@ -9,21 +9,26 @@ describe("Pravi glas canon", () => {
     assert.deepEqual(state.entries.map(e => e.id), ["morgue"]);
     assert.equal(deathLogSlot().date, "NOW");
   });
-  for (const choice of ["direct", "present", "deflect"] as const) {
-    it(`${choice} converges to the same unavoidable confession and ordered beats`, () => {
+  for (const choice of ["already", "forgot", "log"] as const) {
+    it(`${choice} runs its own branch then converges before the wires and final echo`, () => {
       const beats = [...RECEPTION, ...confessionBranch(choice)];
       const ids = beats.map(b => b.id);
-      assert.equal(beats.filter(b => b.id === "confession").length, 1);
-      assert.equal(beats.find(b => b.id === "confession")?.text, CONFESSION);
-      const order = ["reception", "confession", "advice", "echo", "deflection"];
+      assert.equal(beats.filter(b => b.id === choice).length, 1);
+      assert.deepEqual(confessionBranch(choice).slice(-COMMS_END.length), COMMS_END);
+      const order = ["reception", "identification", choice, "convergence", "wires", "promise", "echo", "cold-water"];
       for (let i = 1; i < order.length; i++) assert.ok(ids.indexOf(order[i]) > ids.indexOf(order[i - 1]));
       assert.equal(beats.filter(b => b.echo).length, 1);
-      assert.equal(beats.find(b => b.id === "advice")?.text, ADVICE);
+      assert.equal(beats.filter(b => b.id === "convergence").length, 1);
     });
   }
-  it("present tense alone triggers the silence and correction before confession", () => {
-    assert.deepEqual(confessionBranch("present").slice(0, 4).map(b => b.id), ["present", "silence", "correction", "confession"]);
-    for (const c of ["direct", "deflect"] as const) assert.equal(confessionBranch(c).some(b => b.id === "correction"), false);
+  it("offers three distinct cracks without leaking the other branches", () => {
+    assert.deepEqual(COMMS_CHOICES.map(c => c.id), ["already", "forgot", "log"]);
+    assert.equal(confessionBranch("already").some(b => b.id === "eleven"), true);
+    assert.equal(confessionBranch("forgot").some(b => b.id === "first-time"), true);
+    assert.equal(confessionBranch("log").some(b => b.id === "wrong"), true);
+    assert.equal(confessionBranch("forgot").some(b => b.id === "eleven"), false);
+    assert.equal(confessionBranch("already").some(b => b.id === "first-time"), false);
+    assert.equal(confessionBranch("log").some(b => b.id === "eleven"), false);
   });
   it("records a real date while the death slot always remains NOW", () => {
     const entries = recordPraviGlas([], new Date("2026-11-02T20:46:00Z"));

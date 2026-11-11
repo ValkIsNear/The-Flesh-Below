@@ -1,4 +1,5 @@
 # Current task — English edition and developer entries
+- [ ] Replace comms conversation with the uploaded “Same Entry” script, R., three converging choices, automatic arrival reception, and verify the Signal handoff.
 - [x] Translate all existing dialogue, narration, UI, and titles into English.
 - [x] Add validated scene shortcuts with post-morgue state; clearly distinguish unbuilt scenes.
 - [x] Verify existing flows, translations, and shortcuts; deliver title screenshot.
