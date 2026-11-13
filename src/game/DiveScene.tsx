@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { clang, heartbeat } from "./audio";
 import { CORRIDOR_LENGTH, reachesStoryEncounter, tunnelStart, canShoot, doubleTapSprint, walkSpeed, isTransformedRemain, advanceReturnGrowth, eyeContainsCrosshair, type TunnelDirection } from "./tunnel-flow";
 import { drawReturnGrowth, type ReturnEye } from "./return-growth";
+import { createTunnelSurfaces } from "./tunnel-surfaces";
 import { canUseComms } from "./pravi-glas-flow";
 
 // First-person, texture-mapped software 3D — PS1 / Tomb Raider era look.
@@ -79,29 +80,7 @@ export default function DiveScene({ onReach, direction = "outbound", comms = fal
         }
       grain(c, 0.35);
     });
-    const texWall = makeTex((c) => {
-      c.fillStyle = "#4b3230";
-      c.fillRect(0, 0, 64, 64);
-      c.fillStyle = "#583a34";
-      c.fillRect(3, 3, 58, 26);
-      c.fillStyle = "#422b2b";
-      c.fillRect(3, 34, 58, 26);
-      c.fillStyle = "rgba(0,0,0,0.5)";
-      c.fillRect(0, 30, 64, 3);
-      // rivets
-      c.fillStyle = "#7d5540";
-      for (let x = 6; x < 60; x += 12) {
-        c.fillRect(x, 6, 2, 2);
-        c.fillRect(x, 55, 2, 2);
-      }
-      // rust streaks
-      for (let i = 0; i < 14; i++) {
-        const x = Math.floor(rnd() * 64);
-        c.fillStyle = `rgba(90,45,25,${0.15 + rnd() * 0.3})`;
-        c.fillRect(x, Math.floor(rnd() * 30), 1 + Math.floor(rnd() * 2), 20 + Math.floor(rnd() * 30));
-      }
-      grain(c, 0.3);
-    });
+    const { wall: texWall, ceiling: texCeil } = createTunnelSurfaces();
     const texBand = makeTex((c) => {
       c.fillStyle = "#6b4a1c";
       c.fillRect(0, 0, 64, 64);
@@ -116,15 +95,6 @@ export default function DiveScene({ onReach, direction = "outbound", comms = fal
         c.fill();
       }
       grain(c, 0.4);
-    });
-    const texCeil = makeTex((c) => {
-      c.fillStyle = "#2a1d24";
-      c.fillRect(0, 0, 64, 64);
-      c.fillStyle = "#20161c";
-      c.fillRect(0, 26, 64, 12);
-      c.fillStyle = "rgba(0,0,0,0.5)";
-      c.fillRect(0, 0, 64, 2);
-      grain(c, 0.25);
     });
     const texCrate = makeTex((c) => {
       c.fillStyle = "#6a4620";

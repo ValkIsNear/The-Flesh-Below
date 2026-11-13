@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { createTunnelSurfaces } from "./tunnel-surfaces";
 import { Button } from "@/components/ui/button";
 import { clang, metalGroan, startDrone, unlockAudio } from "./audio";
 import { SIGNAL_DOOR_Z, SIGNAL_MONOLOGUE, canOpenSignalDoor, monologueDue, waterLevel } from "./signal-flow";
 
-const W = 320, H = 200, F = 170;
+const W = 480, H = 270, F = 255;
 const HALF = 0.9, FLOOR = -1.25, CEIL = 0.75;
 const WALK = 1.6, SPRINT = 2.8;
 
@@ -18,7 +19,12 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
   const exitRef = useRef(exit); exitRef.current = exit;
 
   useEffect(() => {
-    const canvas = canvasRef.current!; const g = canvas.getContext("2d")!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const g = canvas.getContext("2d");
+    if (!g) return;
+    g.imageSmoothingEnabled = false;
+    const surfaces = createTunnelSurfaces(true);
     startDrone(0.9);
     const keys = new Set<string>();
     let lastW = 0, sprint = false;
@@ -54,6 +60,26 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
       return `rgb(${base[0] * k | 0},${base[1] * k | 0},${base[2] * k | 0})`;
     };
 
+    type Point = readonly [number, number];
+    const textured = (pts: Point[], tex: HTMLCanvasElement, distance: number, light = 1) => {
+      const uv: Point[] = [[0, 0], [64, 0], [64, 64], [0, 64]];
+      for (const indices of [[0, 1, 2], [0, 2, 3]]) {
+        const [a, b, c] = indices.map(i => pts[i]);
+        const [u, v, w] = indices.map(i => uv[i]);
+        const du1 = v[0] - u[0], dv1 = v[1] - u[1], du2 = w[0] - u[0], dv2 = w[1] - u[1];
+        const det = du1 * dv2 - du2 * dv1;
+        const m11 = ((b[0] - a[0]) * dv2 - (c[0] - a[0]) * dv1) / det;
+        const m12 = ((b[1] - a[1]) * dv2 - (c[1] - a[1]) * dv1) / det;
+        const m21 = ((c[0] - a[0]) * du1 - (b[0] - a[0]) * du2) / det;
+        const m22 = ((c[1] - a[1]) * du1 - (b[1] - a[1]) * du2) / det;
+        g.save();
+        g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.lineTo(...c); g.closePath(); g.clip();
+        g.transform(m11, m12, m21, m22, a[0] - m11 * u[0] - m21 * u[1], a[1] - m12 * u[0] - m22 * u[1]);
+        g.drawImage(tex, 0, 0); g.restore();
+      }
+      quad(pts, `rgba(0,0,0,${1 - Math.max(0, 1 - distance / 18) * light})`);
+    };
+
     const frame = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       const t = now / 1000;
@@ -85,9 +111,9 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
         const flick = (Math.sin(t * 13 + z * 7.3) > -0.85 ? 1 : 0.25) * (0.75 + 0.25 * Math.sin(t * 3 + z));
         const rib = z % 4 === 0;
         // ceiling & walls
-        quad([proj(-HALF, CEIL, za), proj(HALF, CEIL, za), proj(HALF, CEIL, b), proj(-HALF, CEIL, b)], shade([34, 36, 32], za));
-        quad([proj(-HALF, CEIL, za), proj(-HALF, water, za), proj(-HALF, water, b), proj(-HALF, CEIL, b)], shade(rib ? [52, 48, 40] : [40, 42, 38], za));
-        quad([proj(HALF, CEIL, za), proj(HALF, water, za), proj(HALF, water, b), proj(HALF, CEIL, b)], shade(rib ? [50, 46, 38] : [36, 38, 34], za));
+        textured([proj(-HALF, CEIL, za), proj(HALF, CEIL, za), proj(HALF, CEIL, b), proj(-HALF, CEIL, b)], surfaces.ceiling, za, 0.85);
+        textured([proj(-HALF, CEIL, za), proj(-HALF, water, za), proj(-HALF, water, b), proj(-HALF, CEIL, b)], surfaces.wall, za, rib ? 0.85 : 1);
+        textured([proj(HALF, CEIL, za), proj(HALF, water, za), proj(HALF, water, b), proj(HALF, CEIL, b)], surfaces.wall, za, rib ? 0.8 : 0.95);
         // amber emergency strips
         if (z % 2 === 0) {
           const amber = shade([230, 150, 40], za * 0.7, flick);
@@ -103,7 +129,7 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
       if (back) {
         // looking over the shoulder: the sealed hatch I came through
         const hd = cam.z + 0.3;
-        quad([proj(-HALF, CEIL, hd), proj(HALF, CEIL, hd), proj(HALF, water, hd), proj(-HALF, water, hd)], shade([22, 20, 18], hd));
+        textured([proj(-HALF, CEIL, hd), proj(HALF, CEIL, hd), proj(HALF, water, hd), proj(-HALF, water, hd)], surfaces.wall, hd, 0.7);
         for (let z = 0; z <= startZ; z++) seg(z, cam.z - (z + 1), cam.z - z + 0.0);
       } else {
         for (let z = Math.min(doorZ - 1, startZ + 20); z >= startZ; z--) seg(z, z - cam.z, z - cam.z + 1);
@@ -111,7 +137,7 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
       // far door
       const dd = doorZ - cam.z;
       if (!back && dd < 22) {
-        quad([proj(-HALF, CEIL, dd), proj(HALF, CEIL, dd), proj(HALF, water, dd), proj(-HALF, water, dd)], shade([26, 24, 20], dd));
+        textured([proj(-HALF, CEIL, dd), proj(HALF, CEIL, dd), proj(HALF, water, dd), proj(-HALF, water, dd)], surfaces.wall, dd, 0.75);
         const pulse = 0.6 + 0.4 * Math.sin(t * 4);
         const [x0, y0] = proj(-0.5, 0.45, dd), [x1, y1] = proj(0.5, water, dd);
         g.strokeStyle = shade([240, 160, 50], dd * 0.5, pulse); g.lineWidth = 1; g.strokeRect(x0, y0, x1 - x0, y1 - y0);
