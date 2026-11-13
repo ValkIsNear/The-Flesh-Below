@@ -11,6 +11,7 @@
 
 - Reuse DiveScene for both outbound and return exploration, with direction-dependent spawn and encounter handling; this keeps the tunnel geometry and textures identical in both visits.
 - Share industrial wall and ceiling generation in tunnel-surfaces across DiveScene and SignalScene; desaturate the same surfaces for Signal to preserve material continuity.
+- Signal uses unrestricted clockwise yaw, near-plane polygon clipping, camera-relative movement from signal-flow, and the preserved Dive rifle artwork in held-rifle; this keeps full turns stable and equipment visually continuous.
 - Keep return-growth eligibility and projected eye hit rules in tunnel-flow and test them independently; rendering and firing must use the same eye positions and sizes.
 - Reuse DiveScene's renderer in an isolated comms mode for post-credits walking; pause input without rebuilding the level during dialogue to preserve player position.
 - Keep post-credits conversation branches and Dive Log event rules in a browser-safe pure module with tests; Game owns session log state, and dialogue choices must converge before advancing.

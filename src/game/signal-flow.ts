@@ -3,6 +3,15 @@ export const SIGNAL_LENGTH = 60;
 export const SIGNAL_DOOR_Z = 57;
 export const SIGNAL_DOOR_RANGE = 2.2;
 
+/** Camera-relative movement uses the same clockwise yaw as the projection. */
+export function signalMovement(yaw: number, forward: number, side: number, speed: number, dt: number) {
+  if (forward === 0 && side === 0) return { x: 0, z: 0 };
+  return {
+    x: (Math.sin(yaw) * forward + Math.cos(yaw) * side) * speed * dt,
+    z: (Math.cos(yaw) * forward - Math.sin(yaw) * side) * speed * dt,
+  };
+}
+
 export const SIGNAL_MONOLOGUE = [
   { id: "cold", z: 9, text: "The water is colder than it was thirty minutes ago." },
   { id: "bulkhead", z: 26, text: "This bulkhead isn't on the station schematics." },
