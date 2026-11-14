@@ -1,9 +1,12 @@
 /** Existing Dive rifle artwork, kept at hip height during Signal exploration. */
-export function drawHeldRifle(ctx: CanvasRenderingContext2D, width: number, height: number, bob: number, time: number) {
+export function drawHeldRifle(ctx: CanvasRenderingContext2D, width: number, height: number, bob: number, time: number, aimK = 0) {
+  const sway = 1 - aimK * 0.75;
+  const lerp = (a: number, b: number) => a + (b - a) * aimK;
   ctx.save();
-  ctx.translate(width * 0.68 + Math.sin(bob * 0.5) * 3, height * 0.95 + Math.abs(Math.cos(bob * 0.5)) * 3 + Math.sin(time * 1.1));
-  ctx.rotate(0.42);
-  ctx.scale(1.55, 1.55);
+  ctx.translate(lerp(width * 0.68, width * 0.5) + Math.sin(bob * 0.5) * 3 * sway, lerp(height * 0.95, height * 1.08) + (Math.abs(Math.cos(bob * 0.5)) * 3 + Math.sin(time * 1.1)) * sway);
+  ctx.rotate(lerp(0.42, Math.PI / 2));
+  const sc = lerp(1.55, 1.75);
+  ctx.scale(sc, sc);
   const poly = (pts: number[][], fill: string) => {
     ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
     for (const p of pts.slice(1)) ctx.lineTo(p[0], p[1]);
@@ -42,4 +45,13 @@ export function drawHeldRifle(ctx: CanvasRenderingContext2D, width: number, heig
         poly([[26, 14], [48, 12], [56, 36], [30, 44]], "#1c1816");
         poly([[30, 44], [56, 36], [70, 70], [36, 80]], "#120e0d");
   ctx.restore();
+  if (aimK > 0.6) {
+    ctx.strokeStyle = `rgba(220,200,190,${(aimK - 0.6) * 1.6})`;
+    ctx.lineWidth = 1;
+    const cx = width / 2, cy = height / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, cy + 0.5); ctx.lineTo(cx + 6, cy + 0.5);
+    ctx.moveTo(cx + 0.5, cy - 5); ctx.lineTo(cx + 0.5, cy + 6);
+    ctx.stroke();
+  }
 }
