@@ -100,15 +100,6 @@ The Haunting Hook: When Tamara touches it, her deep dissociation shatters. The H
 
 The Ending of Chapter 1: Tamara drops the object and backs away into the dark tunnel, but behind her, through the low-frequency industrial hum, she hears the wet, clicking sound of the bio-meat wall trying to mimic a human voice—learning how to speak her lost lover's name. The abyss has officially recognized her.
 
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/fa1a339d-d546-49cd-8f47-6c4f6241167b).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
