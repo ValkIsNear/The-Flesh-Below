@@ -30,11 +30,11 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
     const keys = new Set<string>();
     let lastW = 0, sprint = false;
     const cam = { x: 0, z: 0.5, yaw: 0, bob: 0 };
-    let back = false, blink = 0;
-    const mdown = (e: MouseEvent) => { if (e.button === 2) { back = true; blink = 0.18; } };
-    const mup = (e: MouseEvent) => { if (e.button === 2) { back = false; blink = 0.18; } };
+    let aiming = false, aimK = 0;
+    const mdown = (e: MouseEvent) => { if (e.button === 2) { aiming = true; canvas.requestPointerLock?.(); } };
+    const mup = (e: MouseEvent) => { if (e.button === 2) aiming = false; };
     const ctx = (e: Event) => e.preventDefault();
-    const clearInput = () => { keys.clear(); sprint = false; back = false; };
+    const clearInput = () => { keys.clear(); sprint = false; aiming = false; };
     let played = 0, lineTimer = 0, groanTimer = 3, stepAcc = 0, raf = 0, last = performance.now();
     const down = (e: KeyboardEvent) => {
       unlockAudio();
@@ -53,7 +53,7 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
 
     type Point = readonly [number, number, number];
     const proj = (x: number, y: number, dz: number): Point => {
-      const yaw = cam.yaw + (back ? Math.PI : 0);
+      const yaw = cam.yaw;
       const dx = x - cam.x;
       return [dx * Math.cos(yaw) - dz * Math.sin(yaw), y - Math.sin(cam.bob) * 0.03, dx * Math.sin(yaw) + dz * Math.cos(yaw)];
     };
@@ -112,7 +112,7 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
       const side = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
       if (keys.has("ArrowLeft")) cam.yaw -= dt;
       if (keys.has("ArrowRight")) cam.yaw += dt;
-      const speed = (sprint && fwd > 0 ? SPRINT : WALK) * 0.8; // water drags at the shins
+      const speed = (sprint && fwd > 0 && !aiming ? SPRINT : WALK) * (aiming ? 0.5 : 0.8); // water drags at the shins
       const movement = signalMovement(cam.yaw, fwd, side * 0.7, speed, dt);
       cam.z = Math.max(0.5, Math.min(SIGNAL_DOOR_Z, cam.z + movement.z));
       cam.x = Math.max(-HALF + 0.25, Math.min(HALF - 0.25, cam.x + movement.x));
@@ -167,8 +167,8 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
       for (const x of [-0.5, 0.5]) quad([proj(x - 0.008, 0.45, dd - 0.01), proj(x + 0.008, 0.45, dd - 0.01), proj(x + 0.008, water, dd - 0.01), proj(x - 0.008, water, dd - 0.01)], shade([240, 160, 50], Math.abs(dd) * 0.5, pulse));
       quad([proj(-0.5, 0.45, dd - 0.01), proj(0.5, 0.45, dd - 0.01), proj(0.5, 0.43, dd - 0.01), proj(-0.5, 0.43, dd - 0.01)], shade([240, 160, 50], Math.abs(dd) * 0.5, pulse));
       quad([proj(-0.015, 0.12, dd - 0.02), proj(0.015, 0.12, dd - 0.02), proj(0.015, 0.09, dd - 0.02), proj(-0.015, 0.09, dd - 0.02)], shade([255, 60, 30], Math.abs(dd) * 0.4, pulse));
-      drawHeldRifle(g, W, H, cam.bob, t);
-      if (blink > 0) { blink -= dt; g.fillStyle = `rgba(0,0,0,${Math.min(1, blink * 6)})`; g.fillRect(0, 0, W, H); }
+      aimK += ((aiming ? 1 : 0) - aimK) * Math.min(1, dt * 12);
+      drawHeldRifle(g, W, H, cam.bob, t, aimK);
       g.fillStyle = "rgba(0,0,0,0.25)"; for (let y = 0; y < H; y += 2) g.fillRect(0, y, W, 1);
       raf = requestAnimationFrame(frame);
     };
@@ -187,7 +187,7 @@ export default function SignalScene({ onDone }: { onDone: () => void }) {
   return <div className="pg-root">
     <canvas ref={canvasRef} width={W} height={H} className="sg-canvas" aria-label="Submerged corridor" />
     <div className="pg-status">T-77 · SECTOR UNLISTED<br />RELAY 01 / SIGNAL DEGRADING</div>
-    <div className="sg-hint">W/S move · double-W sprint · A/D sidestep · click to look · hold right click — look behind</div>
+    <div className="sg-hint">W/S move · double-W sprint · A/D sidestep · click to look · hold right click — aim</div>
     {line && <div className="pg-panel"><div className="pg-speaker">T-77 / INTERNAL</div><div className="pg-narration pg-line">{line}</div></div>}
     {atDoor && <Button className="pg-btn pg-start" onClick={exit}>E · Open bulkhead</Button>}
   </div>;
